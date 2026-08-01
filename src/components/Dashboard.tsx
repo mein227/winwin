@@ -1,0 +1,296 @@
+import { useMemo, useState } from 'react'
+import {
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  Percent,
+  Layers,
+  FileDown,
+  FileUp,
+  Trash2,
+} from 'lucide-react'
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+import { format, parseISO } from 'date-fns'
+import type { Holding, PortfolioSummary, Transaction } from '../types'
+import {
+  formatCurrency,
+  formatPercent,
+  pnlClass,
+} from '../utils/calculations'
+import { StatCard } from './StatCard'
+
+interface DashboardProps {
+  summary: PortfolioSummary
+  holdings: Holding[]
+  transactions: Transaction[]
+  onExport: () => string
+  onImport: (json: string) => void
+  onClear: () => void
+}
+
+export function Dashboard({
+  summary,
+  holdings,
+  transactions,
+  onExport,
+  onImport,
+  onClear,
+}: DashboardProps) {
+  const [message, setMessage] = useState('')
+
+  const equityCurve = useMemo(() => {
+    const sorted = [...transactions].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    )
+
+    // 依時間累積現金流，並以最新市價估算當時持股市值
+    let cash = 0
+    let costBasis = 0
+    const shareMap = new Map<string, { shares: number; cost: number }>()
+    const curve: { date: string; label: string; value: number; invested: number }[] = []
+
+    for (const tx of sorted) {
+      const symbol = tx.symbol.toUpperCase()
+      const entry = shareMap.get(symbol) ?? { shares: 0, cost: 0 }
+
+      if (tx.type === 'buy') {
+        const cost = tx.price * tx.shares + tx.fee
+        cash -= cost
+        entry.cost += cost
+        entry.shares += tx.shares
+        costBasis += cost
+      } else {
+        const proceeds = tx.price * tx.shares - tx.fee - tx.tax
+        cash += proceeds
+        if (entry.shares > 0) {
+          const avg = entry.cost / entry.shares
+          const sold = Math.min(tx.shares, entry.shares)
+          entry.cost -= avg * sold
+          entry.shares -= sold
+          costBasis -= avg * sold
+        }
+      }
+      shareMap.set(symbol, entry)
+
+      let mv = 0
+      for (const [sym, pos] of shareMap) {
+        const holding = holdings.find((h) => h.symbol === sym)
+        const price = holding?.currentPrice ?? (pos.shares > 0 ? pos.cost / pos.shares : 0)
+        mv += pos.shares * price
+      }
+
+      curve.push({
+        date: tx.date,
+        label: format(parseISO(tx.date), 'MM/dd'),
+        value: cash + mv,
+        invested: costBasis,
+      })
+    }
+
+    return curve.length > 0 ? curve : [{ date: '', label: '-', value: 0, invested: 0 }]
+  }, [transactions, holdings])
+
+  const topHoldings = holdings.filter((h) => h.shares > 0).slice(0, 5)
+
+  const handleExport = () => {
+    const data = onExport()
+    const blob = new Blob([data], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `winwin-portfolio-${format(new Date(), 'yyyyMMdd')}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    setMessage('已匯出資料')
+  }
+
+  const handleImport = (file: File | null) => {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        onImport(String(reader.result))
+        setMessage('匯入成功')
+      } catch (err) {
+        setMessage(err instanceof Error ? err.message : '匯入失敗')
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const handleClear = () => {
+    if (window.confirm('確定要清除所有資料？此操作無法復原。')) {
+      onClear()
+      setMessage('已清除所有資料')
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white">資產總覽</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            追蹤持股市值、已實現／未實現獲利與整體報酬率
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleExport}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"
+          >
+            <FileDown className="h-4 w-4" />
+            匯出
+          </button>
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800">
+            <FileUp className="h-4 w-4" />
+            匯入
+            <input
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(e) => handleImport(e.target.files?.[0] ?? null)}
+            />
+          </label>
+          <button
+            type="button"
+            onClick={handleClear}
+            className="inline-flex items-center gap-2 rounded-xl border border-rose-900/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-300 hover:bg-rose-950/70"
+          >
+            <Trash2 className="h-4 w-4" />
+            清除
+          </button>
+        </div>
+      </div>
+
+      {message && (
+        <div className="rounded-xl border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-sm text-teal-200">
+          {message}
+        </div>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="目前資產市值"
+          value={formatCurrency(summary.totalMarketValue)}
+          subtitle={`持股成本 ${formatCurrency(summary.totalCost)}`}
+          icon={<Wallet className="h-4 w-4" />}
+          accent="teal"
+        />
+        <StatCard
+          title="總損益"
+          value={formatCurrency(summary.totalPnL)}
+          subtitle={`未實現 ${formatCurrency(summary.unrealizedPnL)}　已實現 ${formatCurrency(summary.realizedPnL)}`}
+          icon={
+            summary.totalPnL >= 0 ? (
+              <TrendingUp className="h-4 w-4" />
+            ) : (
+              <TrendingDown className="h-4 w-4" />
+            )
+          }
+          accent={summary.totalPnL >= 0 ? 'amber' : 'rose'}
+        />
+        <StatCard
+          title="資產報酬率"
+          value={formatPercent(summary.totalROI)}
+          subtitle={`累計投入 ${formatCurrency(summary.totalInvested)}`}
+          trend={summary.totalROI}
+          icon={<Percent className="h-4 w-4" />}
+          accent="violet"
+        />
+        <StatCard
+          title="持股檔數"
+          value={String(summary.holdingsCount)}
+          subtitle={`進出紀錄 ${summary.transactionCount} 筆`}
+          icon={<Layers className="h-4 w-4" />}
+          accent="sky"
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-5">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 lg:col-span-3">
+          <h3 className="mb-4 text-base font-semibold text-white">資產淨值走勢（估算）</h3>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={equityCurve}>
+                <defs>
+                  <linearGradient id="equityFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#14b8a6" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="#14b8a6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis dataKey="label" stroke="#64748b" fontSize={12} />
+                <YAxis
+                  stroke="#64748b"
+                  fontSize={12}
+                  tickFormatter={(v) =>
+                    new Intl.NumberFormat('zh-TW', {
+                      notation: 'compact',
+                      compactDisplay: 'short',
+                    }).format(v as number)
+                  }
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: '#0f172a',
+                    border: '1px solid #334155',
+                    borderRadius: 12,
+                  }}
+                  labelStyle={{ color: '#94a3b8' }}
+                  formatter={(value) => [formatCurrency(Number(value ?? 0)), '淨值']}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#2dd4bf"
+                  strokeWidth={2}
+                  fill="url(#equityFill)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 lg:col-span-2">
+          <h3 className="mb-4 text-base font-semibold text-white">持股貢獻 TOP 5</h3>
+          {topHoldings.length === 0 ? (
+            <p className="py-10 text-center text-sm text-slate-500">尚無持股，請先新增進出紀錄</p>
+          ) : (
+            <ul className="space-y-3">
+              {topHoldings.map((h) => (
+                <li
+                  key={h.symbol}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-800/80 bg-slate-950/40 px-3 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-white">
+                      {h.symbol}{' '}
+                      <span className="text-slate-400">{h.name}</span>
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      市值 {formatCurrency(h.marketValue)} · 權重 {h.weight.toFixed(1)}%
+                    </p>
+                  </div>
+                  <div className={`text-right text-sm font-semibold ${pnlClass(h.unrealizedPnL)}`}>
+                    <div>{formatCurrency(h.unrealizedPnL)}</div>
+                    <div className="text-xs">{formatPercent(h.unrealizedPnLPercent)}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
