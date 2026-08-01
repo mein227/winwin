@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { X } from 'lucide-react'
+import { LoaderCircle, Search, X } from 'lucide-react'
 import type { Transaction, TransactionType } from '../types'
-import { suggestFee, suggestTax } from '../utils/calculations'
+import { suggestFee, suggestTax, formatNumber, pnlClass } from '../utils/calculations'
+import {
+  fetchStockQuote,
+  getStockDirectory,
+  searchStockDirectory,
+  type StockMeta,
+  type StockQuote,
+} from '../services/stockQuote'
+import { StockExternalLinks } from './StockExternalLinks'
 
 interface TransactionFormProps {
   open: boolean
@@ -33,6 +41,11 @@ export function TransactionForm({
 }: TransactionFormProps) {
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState('')
+  const [lookupLoading, setLookupLoading] = useState(false)
+  const [lookupMsg, setLookupMsg] = useState('')
+  const [quote, setQuote] = useState<StockQuote | null>(null)
+  const [directory, setDirectory] = useState<Record<string, StockMeta>>({})
+  const [suggestions, setSuggestions] = useState<StockMeta[]>([])
 
   useEffect(() => {
     if (!open) return
@@ -53,6 +66,15 @@ export function TransactionForm({
       setForm(emptyForm)
     }
     setError('')
+    setLookupMsg('')
+    setQuote(null)
+    setSuggestions([])
+
+    getStockDirectory()
+      .then(setDirectory)
+      .catch(() => {
+        /* 離線或 API 失敗時仍可用手動輸入 */
+      })
   }, [open, initial])
 
   const price = Number(form.price) || 0
@@ -74,16 +96,91 @@ export function TransactionForm({
     }))
   }, [suggested.fee, suggested.tax, form.autoFee, price, shares])
 
-  if (!open) return null
+  const applyMeta = (meta: StockMeta) => {
+    setForm((prev) => ({
+      ...prev,
+      symbol: meta.symbol,
+      name: meta.name || prev.name,
+    }))
+    setSuggestions([])
+  }
 
-  const handleSymbolBlur = () => {
-    const found = knownSymbols.find(
-      (s) => s.symbol.toUpperCase() === form.symbol.trim().toUpperCase(),
-    )
-    if (found && !form.name) {
-      setForm((prev) => ({ ...prev, name: found.name }))
+  const lookupQuote = async (symbolOverride?: string) => {
+    let symbol = (symbolOverride ?? form.symbol).trim().toUpperCase()
+    if (!symbol) {
+      setLookupMsg('請先輸入股票代號')
+      return
+    }
+
+    // 支援直接輸入中文名稱
+    if (!/^[0-9A-Z]+$/.test(symbol) || !directory[symbol]) {
+      const matched = searchStockDirectory(directory, symbolOverride ?? form.symbol, 1)[0]
+      if (matched) symbol = matched.symbol
+    }
+
+    setLookupLoading(true)
+    setLookupMsg('')
+    try {
+      const local = knownSymbols.find((s) => s.symbol.toUpperCase() === symbol)
+      const meta = directory[symbol]
+      if (meta || local) {
+        setForm((prev) => ({
+          ...prev,
+          symbol,
+          name: meta?.name || local?.name || prev.name,
+        }))
+      }
+
+      const q = await fetchStockQuote(symbol)
+      setQuote(q)
+      setForm((prev) => ({
+        ...prev,
+        symbol: q.symbol,
+        name: q.name || prev.name,
+        // 新增時若尚未填成交價，帶入最新收盤作為參考
+        price: !initial && !prev.price ? String(q.price) : prev.price,
+        autoFee: !initial && !prev.price ? true : prev.autoFee,
+      }))
+      setLookupMsg(`已帶入 ${q.name}（${q.date} 收盤 ${formatNumber(q.price)}）`)
+    } catch (err) {
+      setQuote(null)
+      setLookupMsg(err instanceof Error ? err.message : '查詢失敗')
+    } finally {
+      setLookupLoading(false)
     }
   }
+
+  const handleSymbolChange = (value: string) => {
+    setForm((prev) => ({ ...prev, symbol: value }))
+    setSuggestions(searchStockDirectory(directory, value))
+  }
+
+  const handleSymbolBlur = () => {
+    const raw = form.symbol.trim()
+    if (!raw) return
+
+    const upper = raw.toUpperCase()
+    const meta =
+      directory[upper] ||
+      searchStockDirectory(directory, raw, 1)[0] ||
+      knownSymbols.find((s) => s.symbol.toUpperCase() === upper)
+
+    if (meta) {
+      const symbol = 'symbol' in meta ? meta.symbol : upper
+      const name = meta.name
+      if (!form.name || form.name !== name) {
+        setForm((prev) => ({
+          ...prev,
+          symbol,
+          name: prev.name || name,
+        }))
+      }
+    }
+
+    void lookupQuote(raw)
+  }
+
+  if (!open) return null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -163,35 +260,110 @@ export function TransactionForm({
             ))}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block space-y-1.5">
-              <span className="text-sm text-slate-400">股票代號</span>
+          <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+            <label className="relative block space-y-1.5">
+              <span className="text-sm text-slate-400">股票代號（自動帶入名稱／行情）</span>
               <input
-                list="symbol-list"
                 value={form.symbol}
-                onChange={(e) => setForm((prev) => ({ ...prev, symbol: e.target.value }))}
+                onChange={(e) => handleSymbolChange(e.target.value)}
                 onBlur={handleSymbolBlur}
-                placeholder="例如 2330"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    void lookupQuote()
+                  }
+                }}
+                placeholder="例如 2330 或 台積電"
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-teal-500"
+                autoComplete="off"
               />
-              <datalist id="symbol-list">
-                {knownSymbols.map((s) => (
-                  <option key={s.symbol} value={s.symbol}>
-                    {s.name}
-                  </option>
-                ))}
-              </datalist>
+              {suggestions.length > 0 && (
+                <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-slate-700 bg-slate-950 shadow-xl">
+                  {suggestions.map((item) => (
+                    <li key={item.symbol}>
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-800"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          applyMeta(item)
+                          void lookupQuote(item.symbol)
+                        }}
+                      >
+                        <span className="text-white">
+                          {item.symbol}{' '}
+                          <span className="text-slate-400">{item.name}</span>
+                        </span>
+                        <span className="text-xs text-slate-500">{item.industry}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </label>
-            <label className="block space-y-1.5">
-              <span className="text-sm text-slate-400">股票名稱</span>
-              <input
-                value={form.name}
-                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                placeholder="例如 台積電"
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-teal-500"
-              />
-            </label>
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={() => void lookupQuote()}
+                disabled={lookupLoading}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-teal-500/40 bg-teal-500/15 px-4 py-2.5 text-sm font-medium text-teal-200 hover:bg-teal-500/25 disabled:opacity-60 sm:w-auto"
+              >
+                {lookupLoading ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+                查詢
+              </button>
+            </div>
           </div>
+
+          <label className="block space-y-1.5">
+            <span className="text-sm text-slate-400">股票名稱</span>
+            <input
+              value={form.name}
+              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+              placeholder="自動帶入，也可手動修改"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-teal-500"
+            />
+          </label>
+
+          {form.symbol.trim() && (
+            <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-xs text-slate-500">延伸查詢（開啟外部網站）</p>
+                <StockExternalLinks symbol={form.symbol.trim().toUpperCase()} compact />
+              </div>
+              {quote && (
+                <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                  <div>
+                    <p className="text-xs text-slate-500">最新收盤</p>
+                    <p className="font-semibold text-white">{formatNumber(quote.price)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">漲跌</p>
+                    <p className={`font-semibold ${pnlClass(quote.change)}`}>
+                      {quote.change >= 0 ? '+' : ''}
+                      {formatNumber(quote.change)}（{formatNumber(quote.changePercent)}%）
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">高低</p>
+                    <p className="text-slate-200">
+                      {formatNumber(quote.high)} / {formatNumber(quote.low)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">產業</p>
+                    <p className="truncate text-slate-200">{quote.industry || '—'}</p>
+                  </div>
+                </div>
+              )}
+              {lookupMsg && (
+                <p className="mt-2 text-xs text-slate-400">{lookupMsg}</p>
+              )}
+            </div>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block space-y-1.5">

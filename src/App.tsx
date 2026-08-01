@@ -21,6 +21,7 @@ export default function App() {
           onExport={portfolio.exportPortfolio}
           onImport={portfolio.importPortfolio}
           onClear={portfolio.clearAll}
+          onUpdatePrices={portfolio.updatePrices}
         />
       )}
       {tab === 'transactions' && (
@@ -32,7 +33,11 @@ export default function App() {
         />
       )}
       {tab === 'holdings' && (
-        <Holdings holdings={portfolio.holdings} onUpdatePrice={portfolio.updatePrice} />
+        <Holdings
+          holdings={portfolio.holdings}
+          onUpdatePrice={portfolio.updatePrice}
+          onUpdatePrices={portfolio.updatePrices}
+        />
       )}
       {tab === 'allocation' && (
         <Allocation holdings={portfolio.holdings} summary={portfolio.summary} />

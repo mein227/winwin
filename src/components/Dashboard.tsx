@@ -8,6 +8,8 @@ import {
   FileDown,
   FileUp,
   Trash2,
+  RefreshCw,
+  LoaderCircle,
 } from 'lucide-react'
 import {
   Area,
@@ -25,7 +27,9 @@ import {
   formatPercent,
   pnlClass,
 } from '../utils/calculations'
+import { fetchStockQuotes } from '../services/stockQuote'
 import { StatCard } from './StatCard'
+import { StockExternalLinks } from './StockExternalLinks'
 
 interface DashboardProps {
   summary: PortfolioSummary
@@ -34,6 +38,7 @@ interface DashboardProps {
   onExport: () => string
   onImport: (json: string) => void
   onClear: () => void
+  onUpdatePrices: (updates: { symbol: string; currentPrice: number }[]) => void
 }
 
 export function Dashboard({
@@ -43,8 +48,10 @@ export function Dashboard({
   onExport,
   onImport,
   onClear,
+  onUpdatePrices,
 }: DashboardProps) {
   const [message, setMessage] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
 
   const equityCurve = useMemo(() => {
     const sorted = [...transactions].sort(
@@ -133,6 +140,30 @@ export function Dashboard({
     }
   }
 
+  const handleRefreshPrices = async () => {
+    const symbols = holdings.filter((h) => h.shares > 0).map((h) => h.symbol)
+    if (symbols.length === 0) {
+      setMessage('目前沒有持股可更新')
+      return
+    }
+    setRefreshing(true)
+    try {
+      const { quotes, errors } = await fetchStockQuotes(symbols)
+      if (quotes.length > 0) {
+        onUpdatePrices(quotes.map((q) => ({ symbol: q.symbol, currentPrice: q.price })))
+      }
+      setMessage(
+        errors.length === 0
+          ? `已更新 ${quotes.length} 檔市價`
+          : `已更新 ${quotes.length} 檔，失敗 ${errors.length} 檔`,
+      )
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : '更新市價失敗')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -143,6 +174,19 @@ export function Dashboard({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => void handleRefreshPrices()}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 rounded-xl border border-teal-500/40 bg-teal-500/15 px-3 py-2 text-sm text-teal-200 hover:bg-teal-500/25 disabled:opacity-60"
+          >
+            {refreshing ? (
+              <LoaderCircle className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            更新市價
+          </button>
           <button
             type="button"
             onClick={handleExport}
@@ -280,6 +324,7 @@ export function Dashboard({
                     <p className="text-xs text-slate-500">
                       市值 {formatCurrency(h.marketValue)} · 權重 {h.weight.toFixed(1)}%
                     </p>
+                    <StockExternalLinks symbol={h.symbol} />
                   </div>
                   <div className={`text-right text-sm font-semibold ${pnlClass(h.unrealizedPnL)}`}>
                     <div>{formatCurrency(h.unrealizedPnL)}</div>

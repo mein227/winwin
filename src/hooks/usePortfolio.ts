@@ -98,6 +98,41 @@ export function usePortfolio() {
     })
   }, [])
 
+  const updatePrices = useCallback(
+    (updates: { symbol: string; currentPrice: number }[]) => {
+      if (updates.length === 0) return
+      const map = new Map(
+        updates.map((u) => [u.symbol.toUpperCase(), u.currentPrice] as const),
+      )
+      setPrices((prev) => {
+        const next = [...prev]
+        const seen = new Set<string>()
+        for (let i = 0; i < next.length; i++) {
+          const key = next[i].symbol.toUpperCase()
+          if (map.has(key)) {
+            next[i] = {
+              ...next[i],
+              currentPrice: map.get(key)!,
+              updatedAt: new Date().toISOString(),
+            }
+            seen.add(key)
+          }
+        }
+        for (const [symbol, currentPrice] of map) {
+          if (!seen.has(symbol)) {
+            next.push({
+              symbol,
+              currentPrice,
+              updatedAt: new Date().toISOString(),
+            })
+          }
+        }
+        return next
+      })
+    },
+    [],
+  )
+
   const clearAll = useCallback(() => {
     setTransactions([])
     setPrices([])
@@ -120,6 +155,7 @@ export function usePortfolio() {
     updateTransaction,
     deleteTransaction,
     updatePrice,
+    updatePrices,
     clearAll,
     exportPortfolio,
     importPortfolio,
