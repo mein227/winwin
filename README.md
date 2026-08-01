@@ -15,7 +15,15 @@
 - 資料儲存於瀏覽器 LocalStorage
 - 支援 JSON 匯出／匯入備份
 
-## 開始使用
+## 線上使用
+
+部署於 GitHub Pages：
+
+**https://mein227.github.io/winwin/**
+
+> 若第一次開啟無法連線，請到 GitHub repo → **Settings → Pages → Build and deployment**，將 Source 設為 **GitHub Actions**，等待 Actions 部署完成即可。
+
+## 本機開發
 
 ```bash
 npm install
