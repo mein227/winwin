@@ -17,11 +17,23 @@
 
 ## 線上使用
 
-部署於 GitHub Pages：
+目標網址：
 
 **https://mein227.github.io/winwin/**
 
-> 若第一次開啟無法連線，請到 GitHub repo → **Settings → Pages → Build and deployment**，將 Source 設為 **GitHub Actions**，等待 Actions 部署完成即可。
+### 第一次啟用（只需做一次）
+
+部署 workflow 已就緒，但 GitHub Pages 需由你在網頁上開啟：
+
+1. 打開：https://github.com/mein227/winwin/settings/pages
+2. **Build and deployment → Source** 選擇 **GitHub Actions**
+3. 再到：https://github.com/mein227/winwin/actions  
+   打開最新的 **Deploy to GitHub Pages**，點 **Re-run all jobs**
+4. 約 1 分鐘後即可透過上方網址瀏覽
+
+之後每次推送到 `main`，網站會自動重新部署。
+
+> 提醒：資料存在你瀏覽器的 LocalStorage，換裝置或清快取後不會自動同步；可用總覽頁的「匯出／匯入」備份。
 
 ## 本機開發
 
