@@ -402,7 +402,8 @@ export function RiskPanel({
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
               <h3 className="text-base font-semibold text-white">風險平價建議權重</h3>
               <p className="mt-1 text-xs text-slate-500">
-                以「權重與波動度成反比」配置，讓每檔標的貢獻相近的風險；可到「資產再平衡」頁一鍵套用
+                以「權重與波動度成反比」配置，讓每檔標的貢獻相近的風險；可到「資產再平衡」頁一鍵套用。
+                此方法只看波動不看報酬，債券等低波動標的權重會偏高，請搭配自己的預期報酬調整
               </p>
               <div className="mt-4 space-y-3">
                 {parityCompare.map((item) => (
@@ -453,8 +454,8 @@ export function RiskPanel({
           {
             label: '日報酬與年化報酬',
             formula:
-              '日報酬 r = 今日收盤 ÷ 前日收盤 − 1　年化報酬 = (Π(1+r))^(252/n) − 1',
-            note: '以 252 個交易日年化；使用近一年（可調整）日收盤資料',
+              '日報酬 r = 漲跌價差 ÷ 前一日參考價　年化報酬 = (Π(1+r))^(252/n) − 1',
+            note: '以交易所參考價還原，已排除 ETF 分割並計入配息；以 252 個交易日年化',
           },
           {
             label: '年化波動度',
