@@ -236,7 +236,7 @@ export function calculateExposure(
   const items: ExposureItem[] = raw
     .map((item) => ({
       ...item,
-      valueWeight: netWorth !== 0 ? (item.marketValue / netWorth) * 100 : 0,
+      valueWeight: netWorth > 0 ? (item.marketValue / netWorth) * 100 : 0,
       exposureWeight: netExposure !== 0 ? (item.exposure / netExposure) * 100 : 0,
     }))
     .sort((a, b) => Math.abs(b.exposure) - Math.abs(a.exposure))
@@ -251,10 +251,10 @@ export function calculateExposure(
     netExposure,
     longExposure,
     shortExposure: Math.abs(shortExposure),
-    exposureRatio: netWorth !== 0 ? (netExposure / netWorth) * 100 : 0,
-    grossExposureRatio: netWorth !== 0 ? (grossExposure / netWorth) * 100 : 0,
-    leverageRatio: netWorth !== 0 ? netExposure / netWorth : 0,
-    cashRatio: netWorth !== 0 ? (cash.net / netWorth) * 100 : 0,
+    exposureRatio: netWorth > 0 ? (netExposure / netWorth) * 100 : 0,
+    grossExposureRatio: netWorth > 0 ? (grossExposure / netWorth) * 100 : 0,
+    leverageRatio: netWorth > 0 ? netExposure / netWorth : 0,
+    cashRatio: netWorth > 0 ? (cash.net / netWorth) * 100 : 0,
     impliedBorrow,
     leveragedValue,
     leveragedRatio: stockValue > 0 ? (leveragedValue / stockValue) * 100 : 0,
@@ -275,7 +275,7 @@ export function calculateExposure(
       label: assetClassLabel(assetClass),
       marketValue: group.marketValue,
       exposure: group.exposure,
-      valueWeight: netWorth !== 0 ? (group.marketValue / netWorth) * 100 : 0,
+      valueWeight: netWorth > 0 ? (group.marketValue / netWorth) * 100 : 0,
       exposureWeight: netExposure !== 0 ? (group.exposure / netExposure) * 100 : 0,
     }))
     .sort((a, b) => b.marketValue - a.marketValue)
@@ -311,7 +311,7 @@ export function marketScenario(
   const changeAmount = summary.netExposure * (marketReturn / 100)
   return {
     changeAmount,
-    changePercent: summary.netWorth !== 0 ? (changeAmount / summary.netWorth) * 100 : 0,
+    changePercent: summary.netWorth > 0 ? (changeAmount / summary.netWorth) * 100 : 0,
     netWorthAfter: summary.netWorth + changeAmount,
   }
 }
@@ -331,7 +331,8 @@ export function buildRebalancePlan(
   settings: AllocationSettings,
 ): RebalancePlan {
   const basis = settings.rebalanceBasis
-  const base = exposure.summary.netWorth
+  // 負債大於資產時淨值為負，權重與目標金額都失去意義，一律視為 0
+  const base = Math.max(exposure.summary.netWorth, 0)
   const lotSize = settings.lotSize > 0 ? settings.lotSize : 1000
   const holdingMap = new Map(holdings.map((h) => [h.symbol.toUpperCase(), h]))
 
@@ -369,7 +370,7 @@ export function buildRebalancePlan(
     const targetWeight = (targets.get(symbol) ?? 0) * factor
     const targetValue = (targetWeight / 100) * base
     const diffValue = targetValue - currentValue
-    const currentWeight = base !== 0 ? (currentValue / base) * 100 : 0
+    const currentWeight = base > 0 ? (currentValue / base) * 100 : 0
     const diffWeight = targetWeight - currentWeight
     const overThreshold = Math.abs(diffWeight) >= settings.rebalanceThreshold
 
@@ -422,7 +423,7 @@ export function buildRebalancePlan(
   const cashBefore = exposure.summary.netCash
   const cashTargetWeight = cashTarget * factor
   const cashTargetValue = (cashTargetWeight / 100) * base
-  const cashCurrentWeight = base !== 0 ? (cashBefore / base) * 100 : 0
+  const cashCurrentWeight = base > 0 ? (cashBefore / base) * 100 : 0
 
   rows.push({
     key: CASH_KEY,

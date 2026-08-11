@@ -100,7 +100,7 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
           <p className="mt-1 text-xs text-slate-500">
             佔淨值{' '}
             {formatNumber(
-              summary.netWorth !== 0 ? (summary.stockValue / summary.netWorth) * 100 : 0,
+              summary.netWorth > 0 ? (summary.stockValue / summary.netWorth) * 100 : 0,
               1,
             )}
             %

@@ -126,14 +126,30 @@ export function ExposurePanel({
         </div>
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
           <p className="text-sm text-slate-400">現金緩衝</p>
-          <p className={`mt-2 text-2xl font-bold ${pnlClass(summary.cashBuffer)}`}>
-            {formatNumber(summary.cashBuffer, 1)}%
+          <p
+            className={`mt-2 text-2xl font-bold ${
+              summary.netCash > 0 ? pnlClass(summary.cashBuffer) : 'text-rose-300'
+            }`}
+          >
+            {summary.netCash > 0 ? `${formatNumber(summary.cashBuffer, 1)}%` : '0.0%'}
           </p>
           <p className="mt-1 text-xs text-slate-500">
-            市場跌超過此幅度，虧損金額將大於手上現金
+            {summary.netCash > 0
+              ? '市場跌超過此幅度，虧損金額將大於手上現金'
+              : '淨現金為負，已無下跌緩衝空間'}
           </p>
         </div>
       </div>
+
+      {summary.netWorth <= 0 && (
+        <div className="flex items-start gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            負債已超過總資產，淨值為 {formatCurrency(summary.netWorth)}。此狀態下權重與曝險
+            比率無法計算（分母為負），請先補充現金或降低負債與槓桿部位。
+          </p>
+        </div>
+      )}
 
       {overLimit && (
         <div className="flex items-start gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">

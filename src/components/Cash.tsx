@@ -89,7 +89,7 @@ export function Cash({
 
   const assets = cashAccounts.filter((account) => account.type !== 'debt')
   const debts = cashAccounts.filter((account) => account.type === 'debt')
-  const stockRatio = summary.netWorth !== 0 ? (summary.stockValue / summary.netWorth) * 100 : 0
+  const stockRatio = summary.netWorth > 0 ? (summary.stockValue / summary.netWorth) * 100 : 0
 
   return (
     <div className="space-y-6">
