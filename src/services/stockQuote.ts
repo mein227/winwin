@@ -22,9 +22,21 @@ export interface StockQuote {
   market?: string
 }
 
+export interface PriceHistory {
+  symbol: string
+  name: string
+  dates: string[]
+  closes: number[]
+}
+
 const INFO_CACHE_KEY = 'winwin_stock_info_v1'
+const HISTORY_CACHE_KEY = 'winwin_price_history_v1'
 const INFO_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 const QUOTE_CACHE_TTL_MS = 5 * 60 * 1000
+const HISTORY_CACHE_TTL_MS = 12 * 60 * 60 * 1000
+
+/** 風險分析預設的基準指數（元大台灣 50） */
+export const BENCHMARK_SYMBOL = '0050'
 
 type InfoCache = {
   updatedAt: number
@@ -217,6 +229,120 @@ export async function fetchStockQuotes(
 
   await Promise.all(Array.from({ length: Math.min(concurrency, unique.length) }, () => worker()))
   return { quotes, errors }
+}
+
+type HistoryCache = Record<
+  string,
+  { updatedAt: number; days: number; dates: string[]; closes: number[]; name: string }
+>
+
+function loadHistoryCache(): HistoryCache {
+  try {
+    const raw = localStorage.getItem(HISTORY_CACHE_KEY)
+    if (!raw) return {}
+    return JSON.parse(raw) as HistoryCache
+  } catch {
+    return {}
+  }
+}
+
+function saveHistoryCache(cache: HistoryCache) {
+  try {
+    localStorage.setItem(HISTORY_CACHE_KEY, JSON.stringify(cache))
+  } catch {
+    /* 容量不足時忽略快取 */
+  }
+}
+
+/** 取得日收盤價序列，用於計算波動度、Beta 與相關性 */
+export async function fetchPriceHistory(symbol: string, days = 365): Promise<PriceHistory> {
+  const key = symbol.trim().toUpperCase()
+  if (!key) throw new Error('請輸入股票代號')
+
+  const cache = loadHistoryCache()
+  const cached = cache[key]
+  if (
+    cached &&
+    cached.days >= days &&
+    Date.now() - cached.updatedAt < HISTORY_CACHE_TTL_MS &&
+    cached.dates.length > 0
+  ) {
+    return {
+      symbol: key,
+      name: cached.name || key,
+      dates: cached.dates,
+      closes: cached.closes,
+    }
+  }
+
+  type PriceRow = { date: string; close: number }
+
+  const rows = await fetchFinMind<PriceRow>({
+    dataset: 'TaiwanStockPrice',
+    data_id: key,
+    start_date: todayMinusDays(days),
+  })
+
+  const valid = rows
+    .filter((row) => row.close > 0)
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  if (valid.length < 3) {
+    throw new Error(`${key} 的歷史股價不足，無法計算風險指標`)
+  }
+
+  const meta = await lookupStockMeta(key).catch(() => null)
+  const history: PriceHistory = {
+    symbol: key,
+    name: meta?.name || key,
+    dates: valid.map((row) => row.date),
+    closes: valid.map((row) => row.close),
+  }
+
+  cache[key] = {
+    updatedAt: Date.now(),
+    days,
+    name: history.name,
+    dates: history.dates,
+    closes: history.closes,
+  }
+  saveHistoryCache(cache)
+
+  return history
+}
+
+/** 批次取得歷史股價（限制並行避免超出免費額度） */
+export async function fetchPriceHistories(
+  symbols: string[],
+  days = 365,
+  concurrency = 2,
+): Promise<{
+  histories: PriceHistory[]
+  errors: { symbol: string; message: string }[]
+}> {
+  const unique = [...new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean))]
+  const histories: PriceHistory[] = []
+  const errors: { symbol: string; message: string }[] = []
+
+  let index = 0
+  async function worker() {
+    while (index < unique.length) {
+      const current = unique[index++]
+      try {
+        histories.push(await fetchPriceHistory(current, days))
+      } catch (err) {
+        errors.push({
+          symbol: current,
+          message: err instanceof Error ? err.message : '查詢失敗',
+        })
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, unique.length) }, () => worker()),
+  )
+  return { histories, errors }
 }
 
 export function searchStockDirectory(
