@@ -22,9 +22,21 @@ export interface StockQuote {
   market?: string
 }
 
+export interface PriceHistory {
+  symbol: string
+  name: string
+  dates: string[]
+  closes: number[]
+}
+
 const INFO_CACHE_KEY = 'winwin_stock_info_v1'
+const HISTORY_CACHE_KEY = 'winwin_price_history_v3'
 const INFO_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 const QUOTE_CACHE_TTL_MS = 5 * 60 * 1000
+const HISTORY_CACHE_TTL_MS = 12 * 60 * 60 * 1000
+
+/** 風險分析預設的基準指數（元大台灣 50） */
+export const BENCHMARK_SYMBOL = '0050'
 
 type InfoCache = {
   updatedAt: number
@@ -217,6 +229,225 @@ export async function fetchStockQuotes(
 
   await Promise.all(Array.from({ length: Math.min(concurrency, unique.length) }, () => worker()))
   return { quotes, errors }
+}
+
+type HistoryCache = Record<
+  string,
+  { updatedAt: number; days: number; dates: string[]; closes: number[]; name: string }
+>
+
+function loadHistoryCache(): HistoryCache {
+  try {
+    const raw = localStorage.getItem(HISTORY_CACHE_KEY)
+    if (!raw) return {}
+    return JSON.parse(raw) as HistoryCache
+  } catch {
+    return {}
+  }
+}
+
+function saveHistoryCache(cache: HistoryCache) {
+  try {
+    localStorage.setItem(HISTORY_CACHE_KEY, JSON.stringify(cache))
+  } catch {
+    /* 容量不足時忽略快取 */
+  }
+}
+
+export interface DividendEvent {
+  /** 除權息交易日 */
+  exDate: string
+  /** 每股現金股利（元） */
+  cash: number
+  /** 每股股票股利（元，10 元面額；1 元 = 配股率 10%） */
+  stock: number
+}
+
+/** 超過此單日跌幅視為分割、減資等股本變動，而非真實報酬 */
+const CORPORATE_ACTION_THRESHOLD = 0.35
+
+/**
+ * 還原連續的總報酬價格序列。
+ *
+ * FinMind 免費方案只提供未調整收盤價，會有兩種失真：
+ * 1. 分割／減資：00631L 於 2026-03-31 由 443 元變成 19 元，直接相除會得到 -96% 假跌幅。
+ *    此時改用交易所的漲跌價差 spread（相對前一日參考價）還原，r = spread ÷ (收盤 − spread)。
+ * 2. 除權息：股價自然扣除股利，會低估報酬（0056 這類高股息 ETF 影響尤其大）。
+ *    因此把當日現金股利加回、股票股利以配股率放大後再計算報酬。
+ */
+export function buildAdjustedCloses(
+  rows: { date: string; close: number; spread?: number }[],
+  dividends: DividendEvent[] = [],
+): { dates: string[]; closes: number[] } {
+  const dividendMap = new Map(dividends.map((event) => [event.exDate, event]))
+  const dates: string[] = []
+  const closes: number[] = []
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]
+    if (i === 0) {
+      dates.push(row.date)
+      closes.push(row.close)
+      continue
+    }
+
+    const previous = rows[i - 1].close
+    const priceChange = previous > 0 ? row.close / previous - 1 : 0
+    let growth = 1
+
+    if (Math.abs(priceChange) > CORPORATE_ACTION_THRESHOLD) {
+      const reference =
+        typeof row.spread === 'number' ? row.close - row.spread : NaN
+      growth = Number.isFinite(reference) && reference > 0 ? row.close / reference : 1
+    } else if (previous > 0) {
+      const event = dividendMap.get(row.date)
+      const stockRatio = event ? event.stock / 10 : 0
+      const cash = event ? event.cash : 0
+      growth = (row.close * (1 + stockRatio) + cash) / previous
+    }
+
+    dates.push(row.date)
+    closes.push(closes[i - 1] * growth)
+  }
+
+  return { dates, closes }
+}
+
+/** 取得現金與股票股利事件（用於還原總報酬） */
+export async function fetchDividends(
+  symbol: string,
+  startDate: string,
+): Promise<DividendEvent[]> {
+  type DividendRow = {
+    CashEarningsDistribution: number
+    CashStatutorySurplus: number
+    CashExDividendTradingDate: string
+    StockEarningsDistribution: number
+    StockStatutorySurplus: number
+    StockExDividendTradingDate: string
+  }
+
+  const rows = await fetchFinMind<DividendRow>({
+    dataset: 'TaiwanStockDividend',
+    data_id: symbol,
+    start_date: startDate,
+  })
+
+  const events = new Map<string, DividendEvent>()
+
+  function add(exDate: string, cash: number, stock: number) {
+    if (!exDate || (cash === 0 && stock === 0)) return
+    const existing = events.get(exDate) ?? { exDate, cash: 0, stock: 0 }
+    existing.cash += cash
+    existing.stock += stock
+    events.set(exDate, existing)
+  }
+
+  for (const row of rows) {
+    const cash =
+      (row.CashEarningsDistribution || 0) + (row.CashStatutorySurplus || 0)
+    const stock =
+      (row.StockEarningsDistribution || 0) + (row.StockStatutorySurplus || 0)
+    add(row.CashExDividendTradingDate, cash, 0)
+    add(row.StockExDividendTradingDate, 0, stock)
+  }
+
+  return [...events.values()]
+}
+
+/** 取得還原後的日收盤價序列，用於計算波動度、Beta 與相關性 */
+export async function fetchPriceHistory(symbol: string, days = 365): Promise<PriceHistory> {
+  const key = symbol.trim().toUpperCase()
+  if (!key) throw new Error('請輸入股票代號')
+
+  const cache = loadHistoryCache()
+  const cached = cache[key]
+  if (
+    cached &&
+    cached.days >= days &&
+    Date.now() - cached.updatedAt < HISTORY_CACHE_TTL_MS &&
+    cached.dates.length > 0
+  ) {
+    return {
+      symbol: key,
+      name: cached.name || key,
+      dates: cached.dates,
+      closes: cached.closes,
+    }
+  }
+
+  type PriceRow = { date: string; close: number; spread: number }
+
+  const startDate = todayMinusDays(days)
+  const rows = await fetchFinMind<PriceRow>({
+    dataset: 'TaiwanStockPrice',
+    data_id: key,
+    start_date: startDate,
+  })
+
+  const valid = rows
+    .filter((row) => row.close > 0)
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  if (valid.length < 3) {
+    throw new Error(`${key} 的歷史股價不足，無法計算風險指標`)
+  }
+
+  const meta = await lookupStockMeta(key).catch(() => null)
+  // 股利查詢失敗時仍可用價格報酬計算，只是會略微低估報酬
+  const dividends = await fetchDividends(key, startDate).catch(() => [])
+  const adjusted = buildAdjustedCloses(valid, dividends)
+  const history: PriceHistory = {
+    symbol: key,
+    name: meta?.name || key,
+    dates: adjusted.dates,
+    closes: adjusted.closes,
+  }
+
+  cache[key] = {
+    updatedAt: Date.now(),
+    days,
+    name: history.name,
+    dates: history.dates,
+    closes: history.closes,
+  }
+  saveHistoryCache(cache)
+
+  return history
+}
+
+/** 批次取得歷史股價（限制並行避免超出免費額度） */
+export async function fetchPriceHistories(
+  symbols: string[],
+  days = 365,
+  concurrency = 2,
+): Promise<{
+  histories: PriceHistory[]
+  errors: { symbol: string; message: string }[]
+}> {
+  const unique = [...new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean))]
+  const histories: PriceHistory[] = []
+  const errors: { symbol: string; message: string }[] = []
+
+  let index = 0
+  async function worker() {
+    while (index < unique.length) {
+      const current = unique[index++]
+      try {
+        histories.push(await fetchPriceHistory(current, days))
+      } catch (err) {
+        errors.push({
+          symbol: current,
+          message: err instanceof Error ? err.message : '查詢失敗',
+        })
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, unique.length) }, () => worker()),
+  )
+  return { histories, errors }
 }
 
 export function searchStockDirectory(

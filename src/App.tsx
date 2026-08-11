@@ -3,6 +3,7 @@ import { Layout } from './components/Layout'
 import { Dashboard } from './components/Dashboard'
 import { Transactions } from './components/Transactions'
 import { Holdings } from './components/Holdings'
+import { Cash } from './components/Cash'
 import { Allocation } from './components/Allocation'
 import { usePortfolio } from './hooks/usePortfolio'
 import type { TabId } from './types'
@@ -16,6 +17,7 @@ export default function App() {
       {tab === 'dashboard' && (
         <Dashboard
           summary={portfolio.summary}
+          exposure={portfolio.exposure.summary}
           holdings={portfolio.holdings}
           transactions={portfolio.transactions}
           onExport={portfolio.exportPortfolio}
@@ -39,8 +41,31 @@ export default function App() {
           onUpdatePrices={portfolio.updatePrices}
         />
       )}
+      {tab === 'cash' && (
+        <Cash
+          cashAccounts={portfolio.cashAccounts}
+          summary={portfolio.exposure.summary}
+          cashRate={portfolio.cashRate}
+          onAdd={portfolio.addCashAccount}
+          onUpdate={portfolio.updateCashAccount}
+          onDelete={portfolio.deleteCashAccount}
+        />
+      )}
       {tab === 'allocation' && (
-        <Allocation holdings={portfolio.holdings} summary={portfolio.summary} />
+        <Allocation
+          holdings={portfolio.holdings}
+          exposure={portfolio.exposure}
+          rebalance={portfolio.rebalance}
+          assetSettings={portfolio.assetSettings}
+          settings={portfolio.settings}
+          cashRate={portfolio.cashRate}
+          onSetAssetOverride={portfolio.setAssetOverride}
+          onResetAssetOverride={portfolio.resetAssetOverride}
+          onSetTargetWeight={portfolio.setTargetWeight}
+          onApplyTargetWeights={portfolio.applyTargetWeights}
+          onClearTargetWeights={portfolio.clearTargetWeights}
+          onUpdateSettings={portfolio.updateSettings}
+        />
       )}
     </Layout>
   )

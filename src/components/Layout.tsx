@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   ArrowLeftRight,
   Briefcase,
+  Banknote,
   PieChart,
   TrendingUp,
 } from 'lucide-react'
@@ -18,6 +19,7 @@ const tabs: { id: TabId; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'dashboard', label: '總覽', icon: LayoutDashboard },
   { id: 'transactions', label: '進出紀錄', icon: ArrowLeftRight },
   { id: 'holdings', label: '持股明細', icon: Briefcase },
+  { id: 'cash', label: '現金資產', icon: Banknote },
   { id: 'allocation', label: '資產配置', icon: PieChart },
 ]
 
@@ -40,7 +42,9 @@ export function Layout({ activeTab, onTabChange, children }: LayoutProps) {
               <h1 className="text-lg font-bold tracking-tight text-white sm:text-xl">
                 WinWin
               </h1>
-              <p className="text-xs text-slate-400">個股進出・資產獲利・報酬率・配置</p>
+              <p className="text-xs text-slate-400">
+                個股進出・現金・曝險槓桿・再平衡・報酬風險
+              </p>
             </div>
           </div>
           <nav className="hidden items-center gap-1 rounded-xl border border-slate-800 bg-slate-900/70 p-1 md:flex">
@@ -72,7 +76,7 @@ export function Layout({ activeTab, onTabChange, children }: LayoutProps) {
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-800 bg-slate-950/95 backdrop-blur-xl md:hidden">
-        <div className="mx-auto grid max-w-lg grid-cols-4 gap-1 px-2 py-2">
+        <div className="mx-auto grid max-w-lg grid-cols-5 gap-1 px-2 py-2">
           {tabs.map((tab) => {
             const Icon = tab.icon
             const active = activeTab === tab.id

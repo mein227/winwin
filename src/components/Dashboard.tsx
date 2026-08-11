@@ -21,9 +21,15 @@ import {
   YAxis,
 } from 'recharts'
 import { format, parseISO } from 'date-fns'
-import type { Holding, PortfolioSummary, Transaction } from '../types'
+import type {
+  ExposureSummary,
+  Holding,
+  PortfolioSummary,
+  Transaction,
+} from '../types'
 import {
   formatCurrency,
+  formatNumber,
   formatPercent,
   pnlClass,
 } from '../utils/calculations'
@@ -33,6 +39,7 @@ import { StockExternalLinks } from './StockExternalLinks'
 
 interface DashboardProps {
   summary: PortfolioSummary
+  exposure: ExposureSummary
   holdings: Holding[]
   transactions: Transaction[]
   onExport: () => string
@@ -43,6 +50,7 @@ interface DashboardProps {
 
 export function Dashboard({
   summary,
+  exposure,
   holdings,
   transactions,
   onExport,
@@ -224,9 +232,9 @@ export function Dashboard({
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          title="目前資產市值"
-          value={formatCurrency(summary.totalMarketValue)}
-          subtitle={`持股成本 ${formatCurrency(summary.totalCost)}`}
+          title="總淨值（股票＋現金）"
+          value={formatCurrency(exposure.netWorth)}
+          subtitle={`股票 ${formatCurrency(exposure.stockValue)}　淨現金 ${formatCurrency(exposure.netCash)}`}
           icon={<Wallet className="h-4 w-4" />}
           accent="teal"
         />
@@ -258,6 +266,45 @@ export function Dashboard({
           icon={<Layers className="h-4 w-4" />}
           accent="sky"
         />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+          <p className="text-sm text-slate-400">持股市值</p>
+          <p className="mt-1 text-lg font-semibold text-white">
+            {formatCurrency(summary.totalMarketValue)}
+          </p>
+          <p className="text-xs text-slate-500">
+            持股成本 {formatCurrency(summary.totalCost)}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+          <p className="text-sm text-slate-400">現金比重</p>
+          <p className="mt-1 text-lg font-semibold text-sky-300">
+            {formatNumber(exposure.cashRatio, 1)}%
+          </p>
+          <p className="text-xs text-slate-500">
+            負債 {formatCurrency(exposure.debtValue)}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+          <p className="text-sm text-slate-400">淨曝險</p>
+          <p className="mt-1 text-lg font-semibold text-amber-300">
+            {formatCurrency(exposure.netExposure)}
+          </p>
+          <p className="text-xs text-slate-500">
+            槓桿標的 {formatCurrency(exposure.leveragedValue)}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+          <p className="text-sm text-slate-400">曝險比率</p>
+          <p className="mt-1 text-lg font-semibold text-teal-300">
+            {formatNumber(exposure.exposureRatio, 1)}%
+          </p>
+          <p className="text-xs text-slate-500">
+            實質槓桿 {formatNumber(exposure.leverageRatio, 2)} 倍
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-5">
