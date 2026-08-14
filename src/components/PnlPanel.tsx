@@ -1,37 +1,18 @@
 import { useMemo, useState } from 'react'
-import {
-  CalendarRange,
-  LoaderCircle,
-  RefreshCw,
-  TrendingDown,
-  TrendingUp,
-} from 'lucide-react'
+import { CalendarRange, LoaderCircle, RefreshCw } from 'lucide-react'
 import {
   addMonths,
   endOfMonth,
-  endOfWeek,
   format,
   isAfter,
   parseISO,
   startOfMonth,
-  startOfWeek,
 } from 'date-fns'
 import type { PnlSeries } from '../types'
-import { formatCurrency } from '../utils/calculations'
-import {
-  buildCalendarMonth,
-  filterByRange,
-  groupByMonth,
-  summarizeDays,
-  toDateKey,
-  weekLabel,
-} from '../utils/pnl'
+import { buildCalendarMonth, groupByMonth, toDateKey } from '../utils/pnl'
 import { FormulaCard } from './FormulaCard'
-import { StatCard } from './StatCard'
 import { PnlCalendar } from './PnlCalendar'
 import { PnlRangePanel, type DateRange } from './PnlRangePanel'
-
-const WEEK_OPTIONS = { weekStartsOn: 1 } as const
 
 const FORMULAS = [
   {
@@ -105,33 +86,6 @@ export function PnlPanel({
   const month = useMemo(() => buildCalendarMonth(days, monthDate), [days, monthDate])
   const months = useMemo(() => groupByMonth(days), [days])
 
-  const latestDay = days.length > 0 ? days[days.length - 1] : null
-
-  // 本週以今天為準（週一起算），週一開盤前會顯示 0，避免誤把上週當本週
-  const weekTotal = useMemo(() => {
-    const today = new Date()
-    const start = toDateKey(startOfWeek(today, WEEK_OPTIONS))
-    const end = toDateKey(endOfWeek(today, WEEK_OPTIONS))
-    return summarizeDays(filterByRange(days, start, end), {
-      key: start,
-      label: weekLabel(start, end),
-      startDate: start,
-      endDate: end,
-    })
-  }, [days])
-
-  const monthTotal = month.total
-  const rangeTotal = useMemo(
-    () =>
-      summarizeDays(filterByRange(days, range.start, range.end), {
-        key: 'range',
-        label: `${range.start} ~ ${range.end}`,
-        startDate: range.start,
-        endDate: range.end,
-      }),
-    [days, range.start, range.end],
-  )
-
   const canPrev = bounds.start.slice(0, 7) < month.monthKey
   const canNext = !isAfter(startOfMonth(addMonths(monthDate, 1)), startOfMonth(new Date()))
 
@@ -188,44 +142,6 @@ export function PnlPanel({
         </div>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              title={`最新交易日損益${latestDay ? `（${latestDay.date.slice(5)}）` : ''}`}
-              value={formatCurrency(latestDay?.pnl ?? 0)}
-              trend={latestDay?.pnlPercent ?? 0}
-              subtitle={`收盤市值 ${formatCurrency(latestDay?.marketValue ?? 0)}`}
-              icon={
-                (latestDay?.pnl ?? 0) >= 0 ? (
-                  <TrendingUp className="h-4 w-4" />
-                ) : (
-                  <TrendingDown className="h-4 w-4" />
-                )
-              }
-              accent={(latestDay?.pnl ?? 0) >= 0 ? 'teal' : 'rose'}
-            />
-            <StatCard
-              title="本週損益"
-              value={formatCurrency(weekTotal.pnl)}
-              trend={weekTotal.pnlPercent}
-              subtitle={`${weekTotal.label}　${weekTotal.tradingDays} 個交易日`}
-              accent={weekTotal.pnl >= 0 ? 'sky' : 'rose'}
-            />
-            <StatCard
-              title={`${month.label}損益`}
-              value={formatCurrency(monthTotal.pnl)}
-              trend={monthTotal.pnlPercent}
-              subtitle={`${monthTotal.tradingDays} 個交易日　成交 ${monthTotal.tradeCount} 筆`}
-              accent={monthTotal.pnl >= 0 ? 'violet' : 'rose'}
-            />
-            <StatCard
-              title="選取區間損益"
-              value={formatCurrency(rangeTotal.pnl)}
-              trend={rangeTotal.pnlPercent}
-              subtitle={`${range.start} ~ ${range.end}`}
-              accent={rangeTotal.pnl >= 0 ? 'amber' : 'rose'}
-            />
-          </div>
-
           <PnlCalendar
             month={month}
             canPrev={canPrev}
