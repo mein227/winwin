@@ -1,5 +1,5 @@
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
-import type { CalendarMonth, DailyPnL } from '../types'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import type { CalendarMonth, DailyPnL, DateRange } from '../types'
 import { formatCompact, formatCurrency, formatNumber } from '../utils/calculations'
 
 const WEEKDAYS = ['一', '二', '三', '四', '五']
@@ -10,7 +10,7 @@ interface PnlCalendarProps {
   canNext: boolean
   onPrev: () => void
   onNext: () => void
-  range: { start: string; end: string }
+  range: DateRange
   onSelectRange: (start: string, end: string) => void
 }
 
@@ -42,7 +42,13 @@ function dayTitle(day: DailyPnL): string {
     `報酬率 ${formatNumber(day.pnlPercent, 2)}%`,
     `收盤市值 ${formatCurrency(day.marketValue)}`,
   ]
-  if (day.tradeCount > 0) parts.push(`成交 ${day.tradeCount} 筆`)
+  if (day.tradeCount > 0) {
+    parts.push(
+      `成交 ${day.tradeCount} 筆`,
+      `淨投入 ${formatCurrency(day.netCashFlow)}`,
+      `已實現 ${formatCurrency(day.realizedPnL)}`,
+    )
+  }
   return parts.join('　')
 }
 
@@ -65,7 +71,7 @@ export function PnlCalendar({
   const inRange = (date: string) => date >= range.start && date <= range.end
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
+    <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <button
@@ -77,10 +83,7 @@ export function PnlCalendar({
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <h3 className="flex items-center gap-2 text-base font-semibold text-white">
-            <CalendarDays className="h-4 w-4 text-teal-300" />
-            {month.label}
-          </h3>
+          <h4 className="text-base font-semibold text-white">{month.label}</h4>
           <button
             type="button"
             onClick={onNext}
@@ -216,7 +219,7 @@ export function PnlCalendar({
       </div>
 
       <p className="mt-3 text-xs text-slate-500">
-        點日期、週合計或本月損益即可帶入下方的區間計算；藍點表示當日有成交紀錄。
+        點日期、週合計或本月損益即可帶入上方的區間；藍點表示當日有成交紀錄。
       </p>
     </div>
   )

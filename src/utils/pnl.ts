@@ -5,7 +5,6 @@ import {
   format,
   getISOWeek,
   isSameMonth,
-  parseISO,
   startOfMonth,
   startOfWeek,
 } from 'date-fns'
@@ -237,23 +236,13 @@ export function summarizeDays(days: DailyPnL[], options: SummaryOptions): PnlBuc
   const endDate = options.endDate ?? days[days.length - 1]?.date ?? ''
 
   let pnl = 0
-  let realizedPnL = 0
   let tradeCount = 0
-  let winDays = 0
-  let lossDays = 0
   let peakValue = 0
-  let bestDay: DailyPnL | null = null
-  let worstDay: DailyPnL | null = null
 
   for (const day of days) {
     pnl += day.pnl
-    realizedPnL += day.realizedPnL
     tradeCount += day.tradeCount
-    if (day.pnl > 0) winDays++
-    else if (day.pnl < 0) lossDays++
     peakValue = Math.max(peakValue, day.baseValue, day.marketValue)
-    if (!bestDay || day.pnl > bestDay.pnl) bestDay = day
-    if (!worstDay || day.pnl < worstDay.pnl) worstDay = day
   }
 
   // 期初市值為零（例如區間內才開始買進）時，改以區間內最高市值當分母
@@ -267,15 +256,8 @@ export function summarizeDays(days: DailyPnL[], options: SummaryOptions): PnlBuc
     endDate,
     pnl,
     pnlPercent: denominator > 0 ? (pnl / denominator) * 100 : 0,
-    baseValue,
-    endMarketValue: days[days.length - 1]?.marketValue ?? 0,
-    realizedPnL,
     tradingDays: days.length,
     tradeCount,
-    winDays,
-    lossDays,
-    bestDay,
-    worstDay,
   }
 }
 
@@ -294,42 +276,6 @@ function monthLabel(monthKey: string): string {
 
 export function weekLabel(startDate: string, endDate: string): string {
   return `${startDate.slice(5).replace('-', '/')} ~ ${endDate.slice(5).replace('-', '/')}`
-}
-
-/** 依月份彙總（用於月損益圖與月合計） */
-export function groupByMonth(days: DailyPnL[]): PnlBucket[] {
-  const groups = new Map<string, DailyPnL[]>()
-  for (const day of days) {
-    const key = day.date.slice(0, 7)
-    const list = groups.get(key) ?? []
-    list.push(day)
-    groups.set(key, list)
-  }
-  return [...groups.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([key, list]) => summarizeDays(list, { key, label: monthLabel(key) }))
-}
-
-/** 依週彙總（週一為起點） */
-export function groupByWeek(days: DailyPnL[]): PnlBucket[] {
-  const groups = new Map<string, DailyPnL[]>()
-  for (const day of days) {
-    const key = toDateKey(startOfWeek(parseISO(day.date), WEEK_OPTIONS))
-    const list = groups.get(key) ?? []
-    list.push(day)
-    groups.set(key, list)
-  }
-  return [...groups.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([key, list]) => {
-      const end = toDateKey(endOfWeek(parseISO(key), WEEK_OPTIONS))
-      return summarizeDays(list, {
-        key,
-        label: weekLabel(key, end),
-        startDate: key,
-        endDate: end,
-      })
-    })
 }
 
 /** 週六、週日台股不開盤，月曆只顯示週一～週五 */

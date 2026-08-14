@@ -8,11 +8,16 @@ import {
   parseISO,
   startOfMonth,
 } from 'date-fns'
-import type { PnlSeries } from '../types'
-import { buildCalendarMonth, groupByMonth, toDateKey } from '../utils/pnl'
+import type { DateRange, PnlSeries } from '../types'
+import {
+  buildCalendarMonth,
+  filterByRange,
+  summarizeDays,
+  toDateKey,
+} from '../utils/pnl'
 import { FormulaCard } from './FormulaCard'
 import { PnlCalendar } from './PnlCalendar'
-import { PnlRangePanel, type DateRange } from './PnlRangePanel'
+import { PnlRangeControls } from './PnlRangeControls'
 
 const FORMULAS = [
   {
@@ -29,7 +34,6 @@ const FORMULAS = [
   { label: '每週總損益', formula: 'Σ 該週（週一～週五）各交易日損益' },
   { label: '每月總損益', formula: 'Σ 該月各交易日損益' },
   { label: '區間總損益', formula: 'Σ 起訖日之間各交易日損益' },
-  { label: '勝率', formula: '上漲天數 ÷（上漲天數 + 下跌天數）' },
   {
     label: '分割與除權息',
     formula: '分割當日報酬 = 漲跌價差 ÷（收盤 − 漲跌價差）',
@@ -84,7 +88,17 @@ export function PnlPanel({
   )
 
   const month = useMemo(() => buildCalendarMonth(days, monthDate), [days, monthDate])
-  const months = useMemo(() => groupByMonth(days), [days])
+
+  const rangeTotal = useMemo(
+    () =>
+      summarizeDays(filterByRange(days, range.start, range.end), {
+        key: 'range',
+        label: `${range.start} ~ ${range.end}`,
+        startDate: range.start,
+        endDate: range.end,
+      }),
+    [days, range.start, range.end],
+  )
 
   const canPrev = bounds.start.slice(0, 7) < month.monthKey
   const canNext = !isAfter(startOfMonth(addMonths(monthDate, 1)), startOfMonth(new Date()))
@@ -141,25 +155,26 @@ export function PnlPanel({
             : '尚無可計算的損益，請先到「進出紀錄」新增買進或賣出'}
         </div>
       ) : (
-        <>
-          <PnlCalendar
-            month={month}
-            canPrev={canPrev}
-            canNext={canNext}
-            onPrev={() => shiftMonth(-1)}
-            onNext={() => shiftMonth(1)}
-            range={range}
-            onSelectRange={selectRange}
-          />
-
-          <PnlRangePanel
-            days={days}
-            months={months}
+        <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
+          <PnlRangeControls
             range={range}
             bounds={bounds}
+            total={rangeTotal}
             onRangeChange={setManualRange}
           />
-        </>
+
+          <div className="border-t border-slate-800 pt-4">
+            <PnlCalendar
+              month={month}
+              canPrev={canPrev}
+              canNext={canNext}
+              onPrev={() => shiftMonth(-1)}
+              onNext={() => shiftMonth(1)}
+              range={range}
+              onSelectRange={selectRange}
+            />
+          </div>
+        </div>
       )}
 
       <FormulaCard items={FORMULAS} />
