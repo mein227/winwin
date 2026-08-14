@@ -262,16 +262,14 @@ export interface PnlBucket {
   endDate: string
   pnl: number
   pnlPercent: number
-  /** 期初市值，為零時以區間內最高市值估算報酬率 */
-  baseValue: number
-  endMarketValue: number
-  realizedPnL: number
   tradingDays: number
   tradeCount: number
-  winDays: number
-  lossDays: number
-  bestDay: DailyPnL | null
-  worstDay: DailyPnL | null
+}
+
+/** 自訂區間的起訖日 */
+export interface DateRange {
+  start: string
+  end: string
 }
 
 export interface PnlSeries {
