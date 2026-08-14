@@ -29,11 +29,24 @@ export interface PriceHistory {
   closes: number[]
 }
 
+export interface DailyBars {
+  symbol: string
+  name: string
+  dates: string[]
+  /** 未還原的收盤價，與交易紀錄的成交價同一基準 */
+  closes: number[]
+  /** 交易所公布的漲跌價差，用於還原分割當日的真實報酬 */
+  spreads: number[]
+}
+
 const INFO_CACHE_KEY = 'winwin_stock_info_v1'
 const HISTORY_CACHE_KEY = 'winwin_price_history_v3'
+const BARS_CACHE_KEY = 'winwin_daily_bars_v1'
 const INFO_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 const QUOTE_CACHE_TTL_MS = 5 * 60 * 1000
 const HISTORY_CACHE_TTL_MS = 12 * 60 * 60 * 1000
+/** 日 K 線快取較短，讓使用者瀏覽時能拿到當日最新收盤 */
+export const BARS_CACHE_TTL_MS = 10 * 60 * 1000
 
 /** 風險分析預設的基準指數（元大台灣 50） */
 export const BENCHMARK_SYMBOL = '0050'
@@ -231,6 +244,138 @@ export async function fetchStockQuotes(
   return { quotes, errors }
 }
 
+type BarsCache = Record<
+  string,
+  {
+    updatedAt: number
+    days: number
+    name: string
+    dates: string[]
+    closes: number[]
+    spreads: number[]
+  }
+>
+
+function loadBarsCache(): BarsCache {
+  try {
+    const raw = localStorage.getItem(BARS_CACHE_KEY)
+    if (!raw) return {}
+    return JSON.parse(raw) as BarsCache
+  } catch {
+    return {}
+  }
+}
+
+function saveBarsCache(cache: BarsCache) {
+  try {
+    localStorage.setItem(BARS_CACHE_KEY, JSON.stringify(cache))
+  } catch {
+    /* 容量不足時忽略快取 */
+  }
+}
+
+/**
+ * 取得未還原的日收盤價序列，用於計算每日損益。
+ *
+ * 風險分析用的 `fetchPriceHistory` 會把股利加回來還原總報酬，價格基準會偏離實際成交價；
+ * 損益計算必須與交易紀錄同基準，因此這裡保留原始收盤價，另外帶回 spread 以還原分割。
+ */
+export async function fetchDailyBars(
+  symbol: string,
+  days = 365,
+  force = false,
+): Promise<DailyBars> {
+  const key = symbol.trim().toUpperCase()
+  if (!key) throw new Error('請輸入股票代號')
+
+  const cache = loadBarsCache()
+  const cached = cache[key]
+  if (
+    !force &&
+    cached &&
+    cached.days >= days &&
+    cached.dates.length > 0 &&
+    Date.now() - cached.updatedAt < BARS_CACHE_TTL_MS
+  ) {
+    return {
+      symbol: key,
+      name: cached.name || key,
+      dates: cached.dates,
+      closes: cached.closes,
+      spreads: cached.spreads ?? cached.dates.map(() => 0),
+    }
+  }
+
+  type PriceRow = { date: string; close: number; spread: number }
+
+  const rows = await fetchFinMind<PriceRow>({
+    dataset: 'TaiwanStockPrice',
+    data_id: key,
+    start_date: todayMinusDays(days),
+  })
+
+  const valid = rows
+    .filter((row) => row.close > 0)
+    .sort((a, b) => a.date.localeCompare(b.date))
+
+  if (valid.length === 0) {
+    throw new Error(`找不到 ${key} 的股價資料`)
+  }
+
+  const meta = await lookupStockMeta(key).catch(() => null)
+  const bars: DailyBars = {
+    symbol: key,
+    name: meta?.name || cached?.name || key,
+    dates: valid.map((row) => row.date),
+    closes: valid.map((row) => row.close),
+    spreads: valid.map((row) => row.spread ?? 0),
+  }
+
+  cache[key] = {
+    updatedAt: Date.now(),
+    days,
+    name: bars.name,
+    dates: bars.dates,
+    closes: bars.closes,
+    spreads: bars.spreads,
+  }
+  saveBarsCache(cache)
+
+  return bars
+}
+
+/** 批次取得日 K 線（限制並行避免超出免費額度） */
+export async function fetchDailyBarsBatch(
+  symbols: string[],
+  days = 365,
+  options: { force?: boolean; concurrency?: number } = {},
+): Promise<{ bars: DailyBars[]; errors: { symbol: string; message: string }[] }> {
+  const { force = false, concurrency = 2 } = options
+  const unique = [...new Set(symbols.map((s) => s.trim().toUpperCase()).filter(Boolean))]
+  const bars: DailyBars[] = []
+  const errors: { symbol: string; message: string }[] = []
+
+  let index = 0
+  async function worker() {
+    while (index < unique.length) {
+      const current = unique[index++]
+      try {
+        bars.push(await fetchDailyBars(current, days, force))
+      } catch (err) {
+        errors.push({
+          symbol: current,
+          message: err instanceof Error ? err.message : '查詢失敗',
+        })
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, unique.length) }, () => worker()),
+  )
+  return { bars, errors }
+}
+
 type HistoryCache = Record<
   string,
   { updatedAt: number; days: number; dates: string[]; closes: number[]; name: string }
@@ -264,7 +409,7 @@ export interface DividendEvent {
 }
 
 /** 超過此單日跌幅視為分割、減資等股本變動，而非真實報酬 */
-const CORPORATE_ACTION_THRESHOLD = 0.35
+export const CORPORATE_ACTION_THRESHOLD = 0.35
 
 /**
  * 還原連續的總報酬價格序列。

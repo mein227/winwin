@@ -185,6 +185,16 @@ export function formatNumber(value: number, digits = 2): string {
   }).format(value)
 }
 
+/** 緊湊數字（例如 1.2萬），用於月曆格子等空間有限的地方 */
+export function formatCompact(value: number, withSign = false): string {
+  const text = new Intl.NumberFormat('zh-TW', {
+    notation: 'compact',
+    compactDisplay: 'short',
+    maximumFractionDigits: 1,
+  }).format(value)
+  return withSign && value > 0 ? `+${text}` : text
+}
+
 export function formatPercent(value: number, digits = 2): string {
   const sign = value > 0 ? '+' : ''
   return `${sign}${formatNumber(value, digits)}%`
