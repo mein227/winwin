@@ -237,6 +237,83 @@ export interface PortfolioRisk {
   updatedAt: string
 }
 
+/** 單一交易日的損益（以收盤市值變化扣除當日現金流計算） */
+export interface DailyPnL {
+  /** yyyy-MM-dd */
+  date: string
+  pnl: number
+  /** 前一交易日收盤市值，作為報酬率分母 */
+  baseValue: number
+  /** 當日收盤市值 */
+  marketValue: number
+  pnlPercent: number
+  /** 當日賣出實現的損益 */
+  realizedPnL: number
+  /** 當日買進金額 − 賣出淨收入 */
+  netCashFlow: number
+  tradeCount: number
+}
+
+/** 一段期間（週、月或自訂區間）的損益統計 */
+export interface PnlBucket {
+  key: string
+  label: string
+  startDate: string
+  endDate: string
+  pnl: number
+  pnlPercent: number
+  /** 期初市值，為零時以區間內最高市值估算報酬率 */
+  baseValue: number
+  endMarketValue: number
+  realizedPnL: number
+  tradingDays: number
+  tradeCount: number
+  winDays: number
+  lossDays: number
+  bestDay: DailyPnL | null
+  worstDay: DailyPnL | null
+}
+
+export interface PnlSeries {
+  days: DailyPnL[]
+  startDate: string
+  endDate: string
+  /** 缺少歷史股價、僅以成交價估算的標的 */
+  missing: string[]
+  updatedAt: string
+}
+
+export interface CalendarCell {
+  date: string
+  dayOfMonth: number
+  /** false 表示補齊週次用的鄰月日期 */
+  inMonth: boolean
+  isToday: boolean
+  isFuture: boolean
+  data: DailyPnL | null
+}
+
+export interface CalendarWeek {
+  key: string
+  startDate: string
+  endDate: string
+  /** 週次序號（一年中的第幾週） */
+  weekOfYear: number
+  cells: CalendarCell[]
+  /** 整週損益，含鄰月日期 */
+  total: PnlBucket
+}
+
+export interface CalendarMonth {
+  monthKey: string
+  label: string
+  startDate: string
+  endDate: string
+  weeks: CalendarWeek[]
+  /** 僅計入本月日期的損益 */
+  total: PnlBucket
+}
+
 export type TabId =
   | 'dashboard'
   | 'transactions'
