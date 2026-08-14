@@ -155,7 +155,7 @@ export function PnlPanel({
             : '尚無可計算的損益，請先到「進出紀錄」新增買進或賣出'}
         </div>
       ) : (
-        <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
+        <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
           <PnlRangeControls
             range={range}
             bounds={bounds}
