@@ -24,6 +24,7 @@ import {
   groupByMonth,
   summarizeDays,
   toDateKey,
+  weekLabel,
 } from '../utils/pnl'
 import { FormulaCard } from './FormulaCard'
 import { StatCard } from './StatCard'
@@ -106,17 +107,18 @@ export function PnlPanel({
 
   const latestDay = days.length > 0 ? days[days.length - 1] : null
 
+  // 本週以今天為準（週一起算），週一開盤前會顯示 0，避免誤把上週當本週
   const weekTotal = useMemo(() => {
-    const anchor = parseISO(latestDate)
-    const start = toDateKey(startOfWeek(anchor, WEEK_OPTIONS))
-    const end = toDateKey(endOfWeek(anchor, WEEK_OPTIONS))
+    const today = new Date()
+    const start = toDateKey(startOfWeek(today, WEEK_OPTIONS))
+    const end = toDateKey(endOfWeek(today, WEEK_OPTIONS))
     return summarizeDays(filterByRange(days, start, end), {
       key: start,
-      label: `${start} ~ ${end}`,
+      label: weekLabel(start, end),
       startDate: start,
       endDate: end,
     })
-  }, [days, latestDate])
+  }, [days])
 
   const monthTotal = month.total
   const rangeTotal = useMemo(
@@ -205,7 +207,7 @@ export function PnlPanel({
               title="本週損益"
               value={formatCurrency(weekTotal.pnl)}
               trend={weekTotal.pnlPercent}
-              subtitle={`${weekTotal.tradingDays} 個交易日`}
+              subtitle={`${weekTotal.label}　${weekTotal.tradingDays} 個交易日`}
               accent={weekTotal.pnl >= 0 ? 'sky' : 'rose'}
             />
             <StatCard

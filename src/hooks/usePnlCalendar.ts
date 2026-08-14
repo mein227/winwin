@@ -28,9 +28,10 @@ function loadStored(): StoredResult | null {
   }
 }
 
-function saveStored(result: StoredResult) {
+function saveStored(result: StoredResult | null) {
   try {
-    localStorage.setItem(RESULT_KEY, JSON.stringify(result))
+    if (result) localStorage.setItem(RESULT_KEY, JSON.stringify(result))
+    else localStorage.removeItem(RESULT_KEY)
   } catch {
     /* 容量不足時僅保留本次結果 */
   }
@@ -76,10 +77,8 @@ export function usePnlCalendar({
   holdings,
   onLatestPrices,
 }: UsePnlCalendarOptions): PnlCalendarState {
-  const stored = useRef<StoredResult | null>(loadStored())
-  const [series, setSeries] = useState<PnlSeries | null>(stored.current?.series ?? null)
-  const [syncedAt, setSyncedAt] = useState(stored.current?.syncedAt ?? '')
-  const [quoteDate, setQuoteDate] = useState(stored.current?.quoteDate ?? '')
+  // 先用上次的結果開畫面，抓到新資料再覆蓋
+  const [result, setResult] = useState<StoredResult | null>(() => loadStored())
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -96,13 +95,16 @@ export function usePnlCalendar({
   const load = useCallback(async (force = false) => {
     const txs = transactionsRef.current
     if (txs.length === 0) {
-      setSeries(null)
+      setResult(null)
+      saveStored(null)
       setMessage('')
       return
     }
     if (runningRef.current) return
 
     runningRef.current = true
+    // 以嘗試時間計算間隔，避免查詢失敗時每分鐘重試
+    lastRunRef.current = Date.now()
     setLoading(true)
     try {
       const symbols = [...new Set(txs.map((tx) => tx.symbol.toUpperCase()))]
@@ -118,13 +120,13 @@ export function usePnlCalendar({
         },
         '',
       )
-      const now = new Date().toISOString()
-
-      setSeries(next)
-      setSyncedAt(now)
-      setQuoteDate(latestDate)
-      saveStored({ series: next, syncedAt: now, quoteDate: latestDate })
-      lastRunRef.current = Date.now()
+      const stored: StoredResult = {
+        series: next,
+        syncedAt: new Date().toISOString(),
+        quoteDate: latestDate,
+      }
+      setResult(stored)
+      saveStored(stored)
 
       // 只回寫真的有變動的市價，避免多餘的重繪與寫入
       const updates: { symbol: string; currentPrice: number }[] = []
@@ -194,5 +196,12 @@ export function usePnlCalendar({
     void load(true)
   }, [load])
 
-  return { series, loading, message, syncedAt, quoteDate, refresh }
+  return {
+    series: result?.series ?? null,
+    loading,
+    message,
+    syncedAt: result?.syncedAt ?? '',
+    quoteDate: result?.quoteDate ?? '',
+    refresh,
+  }
 }
