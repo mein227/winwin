@@ -28,20 +28,24 @@ import type {
   Transaction,
 } from '../types'
 import {
+  formatCompact,
   formatCurrency,
   formatNumber,
   formatPercent,
   pnlClass,
 } from '../utils/calculations'
 import { fetchStockQuotes } from '../services/stockQuote'
+import type { PnlCalendarState } from '../hooks/usePnlCalendar'
 import { StatCard } from './StatCard'
 import { StockExternalLinks } from './StockExternalLinks'
+import { PnlPanel } from './PnlPanel'
 
 interface DashboardProps {
   summary: PortfolioSummary
   exposure: ExposureSummary
   holdings: Holding[]
   transactions: Transaction[]
+  pnl: PnlCalendarState
   onExport: () => string
   onImport: (json: string) => void
   onClear: () => void
@@ -53,6 +57,7 @@ export function Dashboard({
   exposure,
   holdings,
   transactions,
+  pnl,
   onExport,
   onImport,
   onClear,
@@ -179,6 +184,13 @@ export function Dashboard({
           <h2 className="text-2xl font-bold text-white">資產總覽</h2>
           <p className="mt-1 text-sm text-slate-400">
             追蹤持股市值、已實現／未實現獲利與整體報酬率
+          </p>
+          <p className="mt-1 text-xs text-teal-300/80">
+            {pnl.loading
+              ? '正在自動更新市價…'
+              : pnl.syncedAt
+                ? `市價已自動更新${pnl.quoteDate ? `（${pnl.quoteDate} 收盤）` : ''}，同步於 ${format(parseISO(pnl.syncedAt), 'MM/dd HH:mm')}`
+                : '開啟頁面時會自動更新市價'}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -307,6 +319,15 @@ export function Dashboard({
         </div>
       </div>
 
+      <PnlPanel
+        series={pnl.series}
+        loading={pnl.loading}
+        message={pnl.message}
+        syncedAt={pnl.syncedAt}
+        quoteDate={pnl.quoteDate}
+        onRefresh={pnl.refresh}
+      />
+
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 lg:col-span-3">
           <h3 className="mb-4 text-base font-semibold text-white">資產淨值走勢（估算）</h3>
@@ -324,12 +345,7 @@ export function Dashboard({
                 <YAxis
                   stroke="#64748b"
                   fontSize={12}
-                  tickFormatter={(v) =>
-                    new Intl.NumberFormat('zh-TW', {
-                      notation: 'compact',
-                      compactDisplay: 'short',
-                    }).format(v as number)
-                  }
+                  tickFormatter={(v) => formatCompact(v as number)}
                 />
                 <Tooltip
                   contentStyle={{
