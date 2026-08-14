@@ -179,10 +179,12 @@ export function formatCurrency(value: number, digits = 0): string {
 }
 
 export function formatNumber(value: number, digits = 2): string {
+  // 四捨五入後為零時去掉負號，避免顯示成 −0.00
+  const rounded = Math.round(value * 10 ** digits) === 0 ? 0 : value
   return new Intl.NumberFormat('zh-TW', {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
-  }).format(value)
+  }).format(rounded)
 }
 
 /** 緊湊數字（例如 1.2萬），用於月曆格子等空間有限的地方 */
@@ -190,7 +192,8 @@ export function formatCompact(value: number, withSign = false): string {
   const text = new Intl.NumberFormat('zh-TW', {
     notation: 'compact',
     compactDisplay: 'short',
-    maximumFractionDigits: 1,
+    // 萬以下取整數（−88、9,778），萬以上留一位小數（3.2萬）
+    maximumFractionDigits: Math.abs(value) < 10000 ? 0 : 1,
   }).format(value)
   return withSign && value > 0 ? `+${text}` : text
 }

@@ -69,8 +69,8 @@ export function PnlRangeControls({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex items-center gap-2">
           <input
             type="date"
             value={range.start}
@@ -80,9 +80,9 @@ export function PnlRangeControls({
             onChange={(e) =>
               e.target.value && onRangeChange({ ...range, start: e.target.value })
             }
-            className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
+            className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-200 sm:flex-none sm:px-3"
           />
-          <span className="text-slate-500">~</span>
+          <span className="shrink-0 text-slate-500">~</span>
           <input
             type="date"
             value={range.end}
@@ -91,25 +91,28 @@ export function PnlRangeControls({
             onChange={(e) =>
               e.target.value && onRangeChange({ ...range, end: e.target.value })
             }
-            className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-200"
+            className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-200 sm:flex-none sm:px-3"
           />
         </div>
 
-        <div className="text-right">
+        <div className="sm:text-right">
           <p className="text-xs text-slate-500">區間總損益</p>
-          <p className={`text-2xl font-bold tracking-tight ${pnlClass(total.pnl)}`}>
+          <p
+            className={`text-2xl font-bold tracking-tight ${pnlClass(total.pnl)}`}
+          >
             {formatCurrency(total.pnl)}
           </p>
-          <p className="text-xs text-slate-500">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500 sm:justify-end">
             <span className={pnlClass(total.pnlPercent)}>
               {formatNumber(total.pnlPercent, 2)}%
             </span>
-            　{total.tradingDays} 個交易日　成交 {total.tradeCount} 筆
-          </p>
+            <span>{total.tradingDays} 個交易日</span>
+            <span>成交 {total.tradeCount} 筆</span>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
         {presets.map((preset) => {
           const active =
             preset.range.start === range.start && preset.range.end === range.end
