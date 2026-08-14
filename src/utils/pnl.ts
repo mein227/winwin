@@ -332,10 +332,16 @@ export function groupByWeek(days: DailyPnL[]): PnlBucket[] {
     })
 }
 
+/** 週六、週日台股不開盤，月曆只顯示週一～週五 */
+function isWeekday(date: Date): boolean {
+  const day = date.getDay()
+  return day >= 1 && day <= 5
+}
+
 /**
- * 組出月曆格線：7 欄（週一～週日）加上每週合計。
+ * 組出月曆格線：5 欄（週一～週五）加上每週合計。
  *
- * 為了讓「每週總損益」是真實的一整週，週合計會包含補齊格線的鄰月日期；
+ * 週合計仍以整週（週一起算）計算，週末沒有交易資料所以不影響金額；
  * 月合計則只計入當月日期。
  */
 export function buildCalendarMonth(
@@ -355,18 +361,21 @@ export function buildCalendarMonth(
   const weeks: CalendarWeek[] = []
   for (let i = 0; i < gridDates.length; i += 7) {
     const weekDates = gridDates.slice(i, i + 7)
-    const cells: CalendarCell[] = weekDates.map((date) => {
-      const key = toDateKey(date)
-      return {
-        date: key,
-        dayOfMonth: date.getDate(),
-        inMonth: isSameMonth(date, monthStart),
-        isToday: key === todayKey,
-        isFuture: key > todayKey,
-        data: byDate.get(key) ?? null,
-      }
-    })
+    const cells: CalendarCell[] = weekDates
+      .filter(isWeekday)
+      .map((date) => {
+        const key = toDateKey(date)
+        return {
+          date: key,
+          dayOfMonth: date.getDate(),
+          inMonth: isSameMonth(date, monthStart),
+          isToday: key === todayKey,
+          isFuture: key > todayKey,
+          data: byDate.get(key) ?? null,
+        }
+      })
 
+    // 週一與週五作為該週起訖，供點選帶入區間
     const startKey = cells[0].date
     const endKey = cells[cells.length - 1].date
     const weekDays = cells

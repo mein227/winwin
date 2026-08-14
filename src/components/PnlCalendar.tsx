@@ -2,7 +2,7 @@ import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { CalendarMonth, DailyPnL } from '../types'
 import { formatCompact, formatCurrency, formatNumber } from '../utils/calculations'
 
-const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
+const WEEKDAYS = ['一', '二', '三', '四', '五']
 
 interface PnlCalendarProps {
   month: CalendarMonth
@@ -120,8 +120,8 @@ export function PnlCalendar({
       </div>
 
       <div className="overflow-x-auto">
-        <div className="min-w-[620px]">
-          <div className="mb-1 grid grid-cols-8 gap-1 text-center text-xs text-slate-500">
+        <div className="min-w-[480px]">
+          <div className="mb-1 grid grid-cols-6 gap-1 text-center text-xs text-slate-500">
             {WEEKDAYS.map((label) => (
               <div key={label} className="py-1">
                 {label}
@@ -132,7 +132,7 @@ export function PnlCalendar({
 
           <div className="space-y-1">
             {month.weeks.map((week) => (
-              <div key={week.key} className="grid grid-cols-8 gap-1">
+              <div key={week.key} className="grid grid-cols-6 gap-1">
                 {week.cells.map((cell) => {
                   const day = cell.data
                   const selected = inRange(cell.date)
