@@ -10,6 +10,8 @@ import type {
   Holding,
   RebalancePlan,
   RebalanceRow,
+  SellPriority,
+  SellReason,
 } from '../types'
 import { suggestFee, suggestTax } from './calculations'
 
@@ -20,6 +22,7 @@ export const defaultAllocationSettings: AllocationSettings = {
   rebalanceThreshold: 10,
   rebalanceReviewMonths: [6, 12],
   rebalanceBasis: 'value',
+  sellPriority: 'profit',
   riskFreeRate: 1.5,
   lotSize: 1000,
   maxExposureRatio: 120,
@@ -317,13 +320,116 @@ export function marketScenario(
   }
 }
 
+/** 賣出分配的候選部位（金額一律為市值，才能直接換算股數） */
+interface SellCandidate {
+  /** 超出目標權重的市值（正值） */
+  over: number
+  /** 可賣出的市值上限，避免賣超過持有部位 */
+  sellable: number
+  hasProfit: boolean
+}
+
+/**
+ * 依額度等比例分配金額，回傳尚未分配完的金額。
+ * 額度合計不足時全部用掉，再由下一輪（優先度較低的部位）承接。
+ */
+function distributeAmount(
+  entries: { index: number; capacity: number }[],
+  remaining: number,
+  allocated: number[],
+): number {
+  if (remaining <= 0) return 0
+  const usable = entries.filter((entry) => entry.capacity > 0)
+  const total = usable.reduce((sum, entry) => sum + entry.capacity, 0)
+  if (total <= 0) return remaining
+
+  if (total <= remaining) {
+    for (const entry of usable) allocated[entry.index] += entry.capacity
+    return remaining - total
+  }
+  for (const entry of usable) {
+    allocated[entry.index] += (entry.capacity / total) * remaining
+  }
+  return 0
+}
+
+/**
+ * 決定每個部位要賣出多少金額。
+ *
+ * 「獲利優先」時先從有未實現獲利的部位取出額度，不夠才動用虧損部位，
+ * 避免明明是套牢的標的卻被當成停利對象賣掉。
+ */
+function allocateSellValues(
+  candidates: SellCandidate[],
+  needed: number,
+  priority: SellPriority,
+): number[] {
+  const allocated = candidates.map(() => 0)
+  if (needed <= 0) return allocated
+
+  const overCapacity = (candidate: SellCandidate, index: number) =>
+    Math.max(Math.min(candidate.over, candidate.sellable) - allocated[index], 0)
+  const fullCapacity = (candidate: SellCandidate, index: number) =>
+    Math.max(candidate.sellable - allocated[index], 0)
+
+  // 每一輪代表一個優先層級，前一層額度用盡才會動到下一層
+  const passes: {
+    match: (candidate: SellCandidate) => boolean
+    capacity: (candidate: SellCandidate, index: number) => number
+  }[] =
+    priority === 'profit'
+      ? [
+          { match: (c) => c.hasProfit, capacity: overCapacity },
+          { match: (c) => c.hasProfit, capacity: fullCapacity },
+          { match: (c) => !c.hasProfit, capacity: overCapacity },
+          { match: (c) => !c.hasProfit, capacity: fullCapacity },
+        ]
+      : [
+          { match: () => true, capacity: overCapacity },
+          { match: () => true, capacity: fullCapacity },
+        ]
+
+  let remaining = needed
+  for (const pass of passes) {
+    if (remaining <= 0) break
+    const entries = candidates
+      .map((candidate, index) => ({ candidate, index }))
+      .filter(({ candidate }) => pass.match(candidate))
+      .map(({ candidate, index }) => ({ index, capacity: pass.capacity(candidate, index) }))
+    remaining = distributeAmount(entries, remaining, allocated)
+  }
+  return allocated
+}
+
+/**
+ * 逢低買進：先把資金分配給距離目標最遠的部位；
+ * 缺口不足以吸收全部資金時，剩下的依現有市值等比例加碼。
+ */
+function allocateBuyValues(gaps: number[], marketValues: number[], needed: number): number[] {
+  const allocated = gaps.map(() => 0)
+  const remaining = distributeAmount(
+    gaps.map((gap, index) => ({ index, capacity: Math.max(gap, 0) })),
+    Math.max(needed, 0),
+    allocated,
+  )
+  if (remaining <= 0) return allocated
+
+  const total = marketValues.reduce((sum, value) => sum + Math.max(value, 0), 0)
+  if (total <= 0) return allocated
+  marketValues.forEach((value, index) => {
+    allocated[index] += (Math.max(value, 0) / total) * remaining
+  })
+  return allocated
+}
+
 /**
  * 產生再平衡計畫（單一策略：整體股權／現金再平衡）。
  *
  * 1. 股權目標 = 100% − 現金目標；界線 = 股權目標 ± 允許偏離（皆以市值計）。
  * 2. 目前整體股權比重超過上限 → 停利，只賣出；低於下限 → 逢低，只買進；在區間內 → 全部不動作。
- * 3. 觸發後把每檔標的拉回其目標權重，使整體股權回到目標值。
- * 4. 目標金額 = 目標權重 × 總淨值；股數 = 差額 ÷ 現價（曝險基準再除以槓桿倍數）。
+ * 3. 交易總額 = 整體股權與目標的差距，剛好拉回目標，不會超賣或超買。
+ * 4. 個別標的的目標權重（可選依市值或依曝險）只決定「先動哪一檔」；
+ *    停利時再依賣出優先順序分配：獲利優先時先賣有賺的，不足才動用虧損部位。
  */
 export function buildRebalancePlan(
   holdings: Holding[],
@@ -352,10 +458,12 @@ export function buildRebalancePlan(
   ])
 
   // 未設定個別標的目標時，維持目前股票內部比例，只調整整體股權／現金比重。
-  if (targets.size === 0 && exposure.items.length > 0) {
-    const inferred = currentWeightTargets(exposure.items, cashTarget)
-    for (const [symbol, weight] of Object.entries(inferred)) {
-      targets.set(symbol, weight)
+  // 此處不四捨五入，否則目標合計會偏離 100%，連帶讓股權觸發線失準。
+  const inferredTotal = exposure.items.reduce((sum, item) => sum + item.marketValue, 0)
+  if (targets.size === 0 && inferredTotal > 0) {
+    const equityWeight = Math.max(100 - cashTarget, 0)
+    for (const item of exposure.items) {
+      targets.set(item.symbol.toUpperCase(), (item.marketValue / inferredTotal) * equityWeight)
     }
   }
 
@@ -376,47 +484,103 @@ export function buildRebalancePlan(
         ? 'buy'
         : 'none'
 
-  const rows: RebalanceRow[] = []
-  let totalBuy = 0
-  let totalSell = 0
-  let totalCost = 0
-
-  for (const symbol of symbols) {
+  const drafts = [...symbols].map((symbol) => {
     const item = exposure.items.find((i) => i.symbol.toUpperCase() === symbol)
     const holding = holdingMap.get(symbol)
     const setting = resolveAssetSetting(symbol, holding?.name ?? '', assetSettings)
     const leverage = item?.leverage ?? setting.leverage
     const price = holding?.currentPrice ?? 0
-    const currentValue = basis === 'exposure' ? (item?.exposure ?? 0) : (item?.marketValue ?? 0)
+    const marketValue = item?.marketValue ?? 0
+    const currentValue = basis === 'exposure' ? (item?.exposure ?? 0) : marketValue
     const targetWeight = (targets.get(symbol) ?? 0) * factor
     const targetValue = (targetWeight / 100) * base
     const diffValue = targetValue - currentValue
-    const currentWeight = base > 0 ? (currentValue / base) * 100 : 0
-    const diffWeight = targetWeight - currentWeight
+    // 依曝險計算時，偏離金額要除以槓桿倍數才是要買賣的市值
+    const toMarket = basis === 'exposure' && leverage > 0 ? 1 / leverage : 1
+    return {
+      symbol,
+      holding,
+      leverage,
+      price,
+      marketValue,
+      currentValue,
+      targetWeight,
+      targetValue,
+      diffValue,
+      currentWeight: base > 0 ? (currentValue / base) * 100 : 0,
+      // 反向部位減碼反而會放大淨曝險，因此不納入分配額度
+      overMarket: leverage > 0 ? Math.max(-diffValue, 0) * toMarket : 0,
+      underMarket: leverage > 0 ? Math.max(diffValue, 0) * toMarket : 0,
+      unrealizedPnL: holding?.unrealizedPnL ?? 0,
+      unrealizedPnLPercent: holding?.unrealizedPnLPercent ?? 0,
+    }
+  })
 
-    // 只有整體股權碰到界線才交易，且方向與整體訊號一致：
-    // 停利時只賣出漲多的、逢低時只買進跌深的，避免「收割卻同時加碼」互相矛盾。
-    const alignedWithTrigger =
-      (trigger === 'sell' && diffValue < 0) || (trigger === 'buy' && diffValue > 0)
+  const sellPriority = settings.sellPriority ?? 'profit'
+  // 只有整體股權碰到界線才交易，且全部標的方向一致，避免「一邊收割、一邊加碼」互相矛盾。
+  // 交易總額只取整體股權與目標的差距，剛好拉回目標，不會超賣或超買。
+  // 與觸發條件同樣以市值衡量，執行後的股權比重才會落在目標上。
+  const equityGap = exposure.summary.stockValue - (equityTargetWeight / 100) * base
+  const sellValues =
+    trigger === 'sell'
+      ? allocateSellValues(
+          drafts.map((draft) => ({
+            over: draft.overMarket,
+            sellable: Math.max(draft.marketValue, 0),
+            hasProfit: draft.unrealizedPnL > 0,
+          })),
+          Math.max(equityGap, 0),
+          sellPriority,
+        )
+      : drafts.map(() => 0)
+  const buyValues =
+    trigger === 'buy'
+      ? allocateBuyValues(
+          drafts.map((draft) => draft.underMarket),
+          drafts.map((draft) => draft.marketValue),
+          -equityGap,
+        )
+      : drafts.map(() => 0)
 
-    const perShare = basis === 'exposure' ? price * leverage : price
-    let shares = alignedWithTrigger && perShare !== 0 ? diffValue / perShare : 0
+  const rows: RebalanceRow[] = []
+  let totalBuy = 0
+  let totalSell = 0
+  let sellFromProfit = 0
+  let sellFromLoss = 0
+  let totalCost = 0
+
+  drafts.forEach((draft, index) => {
+    const { symbol, holding, price, diffValue } = draft
+    const hasProfit = draft.unrealizedPnL > 0
+    const tradeValue = buyValues[index] - sellValues[index]
+
+    let shares = price > 0 ? tradeValue / price : 0
     if (shares < 0 && holding) {
       shares = Math.max(shares, -holding.shares)
     }
     shares = Math.round(shares)
 
     const action: RebalanceRow['action'] =
-      alignedWithTrigger && shares !== 0 ? (diffValue > 0 ? 'buy' : 'sell') : 'hold'
-    const overThreshold = action !== 'hold'
+      shares === 0 ? 'hold' : shares > 0 ? 'buy' : 'sell'
+    const sellReason: SellReason | undefined =
+      action !== 'sell'
+        ? undefined
+        : hasProfit
+          ? 'takeProfit'
+          : sellPriority === 'profit'
+            ? 'lossShortfall'
+            : 'trimOverweight'
 
-    const tradeValue = price > 0 ? Math.abs(shares) * price : Math.abs(diffValue)
-    const estimatedFee =
-      action === 'hold' || tradeValue <= 0 ? 0 : suggestFee(tradeValue, 1)
-    const estimatedTax = action === 'sell' ? suggestTax(tradeValue, 1, 'sell') : 0
+    const amount = price > 0 ? Math.abs(shares) * price : Math.abs(tradeValue)
+    const estimatedFee = action === 'hold' || amount <= 0 ? 0 : suggestFee(amount, 1)
+    const estimatedTax = action === 'sell' ? suggestTax(amount, 1, 'sell') : 0
 
-    if (action === 'buy') totalBuy += tradeValue
-    if (action === 'sell') totalSell += tradeValue
+    if (action === 'buy') totalBuy += amount
+    if (action === 'sell') {
+      totalSell += amount
+      if (hasProfit) sellFromProfit += amount
+      else sellFromLoss += amount
+    }
     totalCost += estimatedFee + estimatedTax
 
     rows.push({
@@ -425,21 +589,25 @@ export function buildRebalancePlan(
       name: holding?.name ?? symbol,
       isCash: false,
       price,
-      leverage,
-      currentValue,
-      currentWeight,
-      targetWeight,
-      targetValue,
+      leverage: draft.leverage,
+      currentValue: draft.currentValue,
+      currentWeight: draft.currentWeight,
+      targetWeight: draft.targetWeight,
+      targetValue: draft.targetValue,
       diffValue,
-      diffWeight,
+      diffWeight: draft.targetWeight - draft.currentWeight,
+      tradeValue: action === 'hold' ? 0 : Math.sign(shares) * amount,
+      unrealizedPnL: draft.unrealizedPnL,
+      unrealizedPnLPercent: draft.unrealizedPnLPercent,
       shares,
       lots: shares / lotSize,
       estimatedFee,
       estimatedTax,
       action,
-      overThreshold,
+      sellReason,
+      overThreshold: action !== 'hold',
     })
-  }
+  })
 
   rows.sort((a, b) => b.currentValue - a.currentValue)
 
@@ -461,6 +629,9 @@ export function buildRebalancePlan(
     targetValue: cashTargetValue,
     diffValue: cashTargetValue - cashBefore,
     diffWeight: cashTargetWeight - cashCurrentWeight,
+    tradeValue: 0,
+    unrealizedPnL: 0,
+    unrealizedPnLPercent: 0,
     shares: 0,
     lots: 0,
     estimatedFee: 0,
@@ -477,9 +648,13 @@ export function buildRebalancePlan(
     equityLowerBound,
     equityUpperBound,
     trigger,
+    sellPriority,
     rows,
     totalBuy,
     totalSell,
+    sellFromProfit,
+    sellFromLoss,
+    lossSellRequired: sellPriority === 'profit' && sellFromLoss > 0,
     totalCost,
     cashBefore,
     cashAfter: cashBefore + totalSell - totalBuy - totalCost,

@@ -85,6 +85,13 @@ export interface AssetSetting {
 
 export type RebalanceBasis = 'value' | 'exposure'
 
+/**
+ * 停利賣出時，賣出金額由哪些部位提供。
+ * profit：優先賣出有未實現獲利的部位，獲利部位不夠才動用虧損部位
+ * deviation：不看損益，一律依超出目標權重的金額等比例賣出
+ */
+export type SellPriority = 'profit' | 'deviation'
+
 export interface AllocationSettings {
   /** 現金目標權重 % */
   cashTargetWeight: number
@@ -93,6 +100,8 @@ export interface AllocationSettings {
   /** 未觸發門檻時，定期檢查配置的月份（1–12） */
   rebalanceReviewMonths: number[]
   rebalanceBasis: RebalanceBasis
+  /** 停利時的賣出優先順序 */
+  sellPriority: SellPriority
   /** 無風險利率 %，用於 Sharpe */
   riskFreeRate: number
   /** 一張股數，台股為 1000 */
@@ -153,6 +162,14 @@ export interface AssetClassBreakdown {
   exposureWeight: number
 }
 
+/**
+ * 建議賣出的原因。
+ * takeProfit：有未實現獲利，屬於停利收割
+ * trimOverweight：不看損益，只因為超出目標權重而減碼
+ * lossShortfall：獲利部位賣完仍不足，只好動用虧損部位
+ */
+export type SellReason = 'takeProfit' | 'trimOverweight' | 'lossShortfall'
+
 export interface RebalanceRow {
   key: string
   symbol: string
@@ -164,14 +181,20 @@ export interface RebalanceRow {
   currentWeight: number
   targetWeight: number
   targetValue: number
-  /** 目標 − 目前，正數表示需買進 */
+  /** 目標 − 目前，正數表示低於目標；僅用於顯示偏離程度 */
   diffValue: number
   diffWeight: number
+  /** 實際建議的交易金額，正數買進、負數賣出 */
+  tradeValue: number
+  /** 未實現損益（依市值計，與持股頁一致） */
+  unrealizedPnL: number
+  unrealizedPnLPercent: number
   shares: number
   lots: number
   estimatedFee: number
   estimatedTax: number
   action: 'buy' | 'sell' | 'hold'
+  sellReason?: SellReason
   overThreshold: boolean
 }
 
@@ -188,9 +211,17 @@ export interface RebalancePlan {
   /** 整體股權觸發上限 % */
   equityUpperBound: number
   trigger: 'buy' | 'sell' | 'none'
+  /** 本次計畫採用的賣出優先順序 */
+  sellPriority: SellPriority
   rows: RebalanceRow[]
   totalBuy: number
   totalSell: number
+  /** 賣出金額中來自獲利部位的部分 */
+  sellFromProfit: number
+  /** 賣出金額中來自虧損（含損益兩平）部位的部分 */
+  sellFromLoss: number
+  /** true 表示獲利部位不足以拉回目標，已動用虧損部位 */
+  lossSellRequired: boolean
   totalCost: number
   cashBefore: number
   cashAfter: number
