@@ -16,6 +16,8 @@ import type {
   PortfolioRisk,
   RebalanceBasis,
   RebalancePlan,
+  SellPriority,
+  SellReason,
 } from '../types'
 import type { ExposureResult } from '../utils/exposure'
 import {
@@ -44,6 +46,25 @@ const basisOptions: { id: RebalanceBasis; label: string; hint: string }[] = [
   { id: 'exposure', label: '依曝險', hint: '目標權重套用在曝險金額，持有正 2 時更能控制風險' },
 ]
 
+const sellPriorityOptions: { id: SellPriority; label: string; hint: string }[] = [
+  {
+    id: 'profit',
+    label: '獲利優先',
+    hint: '先賣有未實現獲利的部位（真正的停利），獲利部位不足才動用虧損部位',
+  },
+  {
+    id: 'deviation',
+    label: '依偏離比例',
+    hint: '不看損益，所有超出目標權重的部位一律等比例賣出，維持標的間的相對比例',
+  },
+]
+
+const sellReasonLabels: Record<SellReason, string> = {
+  takeProfit: '停利',
+  trimOverweight: '超出目標',
+  lossShortfall: '獲利不足，補缺口',
+}
+
 function nextReviewLabel(months: number[]): string {
   const now = new Date()
   const sorted = [...months].filter((month) => month >= 1 && month <= 12).sort((a, b) => a - b)
@@ -67,6 +88,7 @@ export function RebalancePanel({
   const stockRows = plan.rows.filter((row) => !row.isCash)
   const cashRow = plan.rows.find((row) => row.isCash)
   const hasTargets = plan.targetSum > 0
+  const sellPriority = settings.sellPriority ?? 'profit'
 
   const rawTarget = (symbol: string) => {
     const setting = assetSettings.find(
@@ -192,7 +214,7 @@ export function RebalancePanel({
           先決定整體資產配置；只有碰到上下限時才交易，平時每半年檢查一次。
         </p>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
             <p className="text-sm font-semibold text-white">1. 設定目標配置</p>
             <div className="mt-3 grid grid-cols-2 gap-3">
@@ -256,9 +278,35 @@ export function RebalancePanel({
           </div>
 
           <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+            <p className="text-sm font-semibold text-white">3. 決定要賣哪些部位</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-950 p-1">
+              {sellPriorityOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => onUpdateSettings({ sellPriority: option.id })}
+                  className={`rounded-lg py-2 text-sm font-semibold transition ${
+                    sellPriority === option.id
+                      ? 'bg-rose-500/20 text-rose-200'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-slate-500">
+              {sellPriorityOptions.find((option) => option.id === sellPriority)?.hint}
+            </p>
+            <p className="mt-2 text-xs text-slate-500">
+              只影響停利賣出；逢低買進一律依各標的距離目標的缺口分配。
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
             <div className="flex items-center gap-2">
               <CalendarClock className="h-4 w-4 text-sky-300" />
-              <p className="text-sm font-semibold text-white">3. 每半年定期檢查</p>
+              <p className="text-sm font-semibold text-white">4. 每半年定期檢查</p>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <label className="space-y-1.5">
@@ -381,7 +429,7 @@ export function RebalancePanel({
         </p>
         <p className="mt-1 text-xs text-slate-400">
           {plan.trigger === 'sell'
-            ? `已達 ${formatNumber(plan.equityUpperBound, 0)}% 停利線，建議賣出部分股票，將現金拉回 ${formatNumber(settings.cashTargetWeight, 0)}%。`
+            ? `已達 ${formatNumber(plan.equityUpperBound, 0)}% 停利線，建議賣出 ${formatCurrency(plan.totalSell)}，將現金拉回 ${formatNumber(settings.cashTargetWeight, 0)}%。`
             : plan.trigger === 'buy'
               ? `已達 ${formatNumber(plan.equityLowerBound, 0)}% 買進線，建議動用現金加碼，將股權拉回 ${formatNumber(plan.equityTargetWeight, 0)}%。`
               : `仍在 ${formatNumber(plan.equityLowerBound, 0)}%～${formatNumber(plan.equityUpperBound, 0)}% 範圍內，暫時不需交易。`}
@@ -418,6 +466,12 @@ export function RebalancePanel({
               <p className="mt-2 text-xl font-bold text-rose-300">
                 {formatCurrency(plan.totalSell)}
               </p>
+              {plan.totalSell > 0 && (
+                <p className="mt-1 text-xs text-slate-500">
+                  獲利部位 {formatCurrency(plan.sellFromProfit)}／虧損部位{' '}
+                  {formatCurrency(plan.sellFromLoss)}
+                </p>
+              )}
             </div>
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
               <p className="text-sm text-slate-400">預估手續費＋稅</p>
@@ -442,6 +496,17 @@ export function RebalancePanel({
             </div>
           </div>
 
+          {plan.lossSellRequired && (
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>
+                獲利部位全部賣出仍不足以把股權拉回 {formatNumber(plan.equityTargetWeight, 0)}%，
+                因此另外賣出 {formatCurrency(plan.sellFromLoss)} 的虧損部位（表格標示「獲利不足，補缺口」）。
+                若不想實現虧損，可調高股權目標或加大允許偏離，讓觸發線放寬。
+              </p>
+            </div>
+          )}
+
           {plan.cashAfter < 0 && (
             <div className="flex items-start gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
               <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
@@ -458,8 +523,10 @@ export function RebalancePanel({
                 {plan.trigger === 'none'
                   ? `整體股權仍在 ${formatNumber(plan.equityLowerBound, 0)}%～${formatNumber(plan.equityUpperBound, 0)}% 範圍內，全部維持不動作，避免頻繁交易被手續費吃掉報酬`
                   : plan.trigger === 'sell'
-                    ? `整體股權已超過 ${formatNumber(plan.equityUpperBound, 0)}%，停利收割：只賣出漲多的部位，將股權拉回 ${formatNumber(plan.equityTargetWeight, 0)}%`
-                    : `整體股權已低於 ${formatNumber(plan.equityLowerBound, 0)}%，逢低買進：只加碼跌深的部位，將股權拉回 ${formatNumber(plan.equityTargetWeight, 0)}%`}
+                    ? sellPriority === 'profit'
+                      ? `整體股權已超過 ${formatNumber(plan.equityUpperBound, 0)}%，停利收割：優先賣出有獲利的部位，將股權拉回 ${formatNumber(plan.equityTargetWeight, 0)}%`
+                      : `整體股權已超過 ${formatNumber(plan.equityUpperBound, 0)}%，減碼收割：依偏離比例賣出超出目標的部位（不分賺賠），將股權拉回 ${formatNumber(plan.equityTargetWeight, 0)}%`
+                    : `整體股權已低於 ${formatNumber(plan.equityLowerBound, 0)}%，逢低買進：加碼低於目標的部位，將股權拉回 ${formatNumber(plan.equityTargetWeight, 0)}%`}
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -467,6 +534,7 @@ export function RebalancePanel({
                 <thead className="border-b border-slate-800 bg-slate-950/60 text-slate-400">
                   <tr>
                     <th className="px-4 py-3 font-medium">標的</th>
+                    <th className="px-4 py-3 font-medium text-right">未實現損益</th>
                     <th className="px-4 py-3 font-medium text-right">目前權重</th>
                     <th className="px-4 py-3 font-medium text-right">目標權重 %</th>
                     <th className="px-4 py-3 font-medium text-right">偏離</th>
@@ -487,6 +555,12 @@ export function RebalancePanel({
                         <div className="text-xs text-slate-500">
                           {row.name}
                           {row.leverage !== 1 && ` · ${formatNumber(row.leverage, 1)}x`}
+                        </div>
+                      </td>
+                      <td className={`px-4 py-3 text-right ${pnlClass(row.unrealizedPnL)}`}>
+                        {formatPercent(row.unrealizedPnLPercent, 1)}
+                        <div className="text-xs opacity-70">
+                          {formatCurrency(row.unrealizedPnL)}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right text-slate-200">
@@ -520,8 +594,8 @@ export function RebalancePanel({
                       <td className="px-4 py-3 text-right text-slate-300">
                         {formatCurrency(row.targetValue)}
                       </td>
-                      <td className={`px-4 py-3 text-right ${pnlClass(row.diffValue)}`}>
-                        {formatCurrency(row.diffValue)}
+                      <td className={`px-4 py-3 text-right ${pnlClass(row.tradeValue)}`}>
+                        {row.action === 'hold' ? '—' : formatCurrency(row.tradeValue)}
                       </td>
                       <td className="px-4 py-3 text-right text-slate-300">
                         {row.price > 0 && row.action !== 'hold' ? (
@@ -547,12 +621,24 @@ export function RebalancePanel({
                         >
                           {row.action === 'buy' ? '買進' : row.action === 'sell' ? '賣出' : '不動作'}
                         </span>
+                        {row.sellReason && (
+                          <div
+                            className={`mt-1 text-[10px] ${
+                              row.sellReason === 'lossShortfall'
+                                ? 'text-amber-300'
+                                : 'text-slate-500'
+                            }`}
+                          >
+                            {sellReasonLabels[row.sellReason]}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
                   {cashRow && (
                     <tr className="bg-slate-950/40">
                       <td className="px-4 py-3 font-medium text-white">現金</td>
+                      <td className="px-4 py-3 text-right text-slate-500">—</td>
                       <td className="px-4 py-3 text-right text-slate-200">
                         {formatNumber(cashRow.currentWeight, 1)}%
                       </td>
@@ -624,9 +710,24 @@ export function RebalancePanel({
             note: `目前基準為「${settings.rebalanceBasis === 'exposure' ? '依曝險' : '依市值'}」，總淨值 ${formatCurrency(plan.base)}`,
           },
           {
-            label: '需調整金額與股數',
+            label: '本次要調整的總金額',
+            formula: '交易總額 = |目前股權金額 − 目標股權金額|',
+            note: '只補足整體偏離的淨額，不會把股權砍到目標以下或買過頭',
+          },
+          {
+            label: '賣出順序（決定賣哪一檔）',
             formula:
-              '調整金額 = 目標金額 − 目前金額　股數 = 調整金額 ÷ 現價（依曝險時再除以槓桿倍數）',
+              sellPriority === 'profit'
+                ? '獲利部位（超出目標的金額 → 其餘持股）→ 不足時才動用虧損部位'
+                : '所有超出目標的部位依偏離金額等比例賣出（不分賺賠）',
+            note:
+              sellPriority === 'profit'
+                ? '權重偏離只決定「賣多少」，是否獲利才決定「先賣誰」，避免把套牢的部位當成停利對象'
+                : '維持標的之間的相對比例，但虧損部位也會一起被減碼',
+          },
+          {
+            label: '需調整金額與股數',
+            formula: '股數 = 該檔分配到的調整金額 ÷ 現價（依曝險時再除以槓桿倍數）',
             note: '正數為買進、負數為賣出；賣出股數不會超過持有股數',
           },
           {
@@ -646,7 +747,7 @@ export function RebalancePanel({
           },
           {
             label: '再平衡的意義',
-            formula: '賣掉漲多的、買進跌深的 → 自動維持風險水位',
+            formula: '股權漲過頭就收割、跌過頭就加碼 → 自動維持風險水位',
             note: '長期可降低組合波動並貢獻「再平衡溢酬」，但要留意台股賣出的證交稅與手續費',
           },
         ]}
