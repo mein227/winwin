@@ -318,12 +318,12 @@ export function marketScenario(
 }
 
 /**
- * 產生再平衡計畫。
+ * 產生再平衡計畫（單一策略：整體股權／現金再平衡）。
  *
- * 目標金額 = 目標權重 × 總淨值
- * 差額     = 目標金額 − 目前金額
- * 股數     = 差額 ÷ 現價（曝險模式再除以槓桿倍數）
- * 僅在 |偏離| ≥ 門檻 時建議調整
+ * 1. 股權目標 = 100% − 現金目標；界線 = 股權目標 ± 允許偏離（皆以市值計）。
+ * 2. 目前整體股權比重超過上限 → 停利，只賣出；低於下限 → 逢低，只買進；在區間內 → 全部不動作。
+ * 3. 觸發後把每檔標的拉回其目標權重，使整體股權回到目標值。
+ * 4. 目標金額 = 目標權重 × 總淨值；股數 = 差額 ÷ 現價（曝險基準再除以槓桿倍數）。
  */
 export function buildRebalancePlan(
   holdings: Holding[],
@@ -364,11 +364,8 @@ export function buildRebalancePlan(
   const normalized = targetSum > 0 && Math.abs(targetSum - 100) > 0.01
   const factor = normalized ? 100 / targetSum : 1
   const equityTargetWeight = Math.max(100 - cashTarget * factor, 0)
-  const equityCurrentValue = exposure.items.reduce(
-    (sum, item) => sum + (basis === 'exposure' ? item.exposure : item.marketValue),
-    0,
-  )
-  const equityCurrentWeight = base > 0 ? (equityCurrentValue / base) * 100 : 0
+  // 股權／現金界線一律以「市值」衡量，才能對應配置總覽並避免曝險放大失真
+  const equityCurrentWeight = base > 0 ? (exposure.summary.stockValue / base) * 100 : 0
   const threshold = Math.max(Number(settings.rebalanceThreshold) || 0, 0)
   const equityLowerBound = Math.max(equityTargetWeight - threshold, 0)
   const equityUpperBound = Math.min(equityTargetWeight + threshold, 100)
@@ -396,21 +393,22 @@ export function buildRebalancePlan(
     const diffValue = targetValue - currentValue
     const currentWeight = base > 0 ? (currentValue / base) * 100 : 0
     const diffWeight = targetWeight - currentWeight
-    // 整體股權碰到上下限時全面調整；個別標的偏離過大時也單獨調整回目標
-    const overThreshold = trigger !== 'none' || Math.abs(diffWeight) >= threshold
+
+    // 只有整體股權碰到界線才交易，且方向與整體訊號一致：
+    // 停利時只賣出漲多的、逢低時只買進跌深的，避免「收割卻同時加碼」互相矛盾。
+    const alignedWithTrigger =
+      (trigger === 'sell' && diffValue < 0) || (trigger === 'buy' && diffValue > 0)
 
     const perShare = basis === 'exposure' ? price * leverage : price
-    let shares = perShare !== 0 ? diffValue / perShare : 0
+    let shares = alignedWithTrigger && perShare !== 0 ? diffValue / perShare : 0
     if (shares < 0 && holding) {
       shares = Math.max(shares, -holding.shares)
     }
     shares = Math.round(shares)
 
-    const action: RebalanceRow['action'] = !overThreshold
-      ? 'hold'
-      : diffValue > 0
-        ? 'buy'
-        : 'sell'
+    const action: RebalanceRow['action'] =
+      alignedWithTrigger && shares !== 0 ? (diffValue > 0 ? 'buy' : 'sell') : 'hold'
+    const overThreshold = action !== 'hold'
 
     const tradeValue = price > 0 ? Math.abs(shares) * price : Math.abs(diffValue)
     const estimatedFee =
@@ -468,7 +466,7 @@ export function buildRebalancePlan(
     estimatedFee: 0,
     estimatedTax: 0,
     action: 'hold',
-    overThreshold: Math.abs(cashTargetWeight - cashCurrentWeight) >= threshold,
+    overThreshold: trigger !== 'none',
   })
 
   return {
