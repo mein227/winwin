@@ -1,10 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
   Wallet,
-  TrendingUp,
-  TrendingDown,
-  Percent,
-  Layers,
   FileDown,
   FileUp,
   Trash2,
@@ -24,7 +20,6 @@ import { format, parseISO } from 'date-fns'
 import type {
   ExposureSummary,
   Holding,
-  PortfolioSummary,
   Transaction,
 } from '../types'
 import {
@@ -41,7 +36,6 @@ import { StockExternalLinks } from './StockExternalLinks'
 import { PnlPanel } from './PnlPanel'
 
 interface DashboardProps {
-  summary: PortfolioSummary
   exposure: ExposureSummary
   holdings: Holding[]
   transactions: Transaction[]
@@ -53,7 +47,6 @@ interface DashboardProps {
 }
 
 export function Dashboard({
-  summary,
   exposure,
   holdings,
   transactions,
@@ -250,46 +243,9 @@ export function Dashboard({
           icon={<Wallet className="h-4 w-4" />}
           accent="teal"
         />
-        <StatCard
-          title="總損益"
-          value={formatCurrency(summary.totalPnL)}
-          subtitle={`未實現 ${formatCurrency(summary.unrealizedPnL)}　已實現 ${formatCurrency(summary.realizedPnL)}`}
-          icon={
-            summary.totalPnL >= 0 ? (
-              <TrendingUp className="h-4 w-4" />
-            ) : (
-              <TrendingDown className="h-4 w-4" />
-            )
-          }
-          accent={summary.totalPnL >= 0 ? 'amber' : 'rose'}
-        />
-        <StatCard
-          title="資產報酬率"
-          value={formatPercent(summary.totalROI)}
-          subtitle={`累計投入 ${formatCurrency(summary.totalInvested)}`}
-          trend={summary.totalROI}
-          icon={<Percent className="h-4 w-4" />}
-          accent="violet"
-        />
-        <StatCard
-          title="持股檔數"
-          value={String(summary.holdingsCount)}
-          subtitle={`進出紀錄 ${summary.transactionCount} 筆`}
-          icon={<Layers className="h-4 w-4" />}
-          accent="sky"
-        />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-sm text-slate-400">持股市值</p>
-          <p className="mt-1 text-lg font-semibold text-white">
-            {formatCurrency(summary.totalMarketValue)}
-          </p>
-          <p className="text-xs text-slate-500">
-            持股成本 {formatCurrency(summary.totalCost)}
-          </p>
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
           <p className="text-sm text-slate-400">現金比重</p>
           <p className="mt-1 text-lg font-semibold text-sky-300">

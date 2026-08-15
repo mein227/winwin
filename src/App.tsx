@@ -24,7 +24,6 @@ export default function App() {
     <Layout activeTab={tab} onTabChange={setTab}>
       {tab === 'dashboard' && (
         <Dashboard
-          summary={portfolio.summary}
           exposure={portfolio.exposure.summary}
           holdings={portfolio.holdings}
           transactions={portfolio.transactions}
