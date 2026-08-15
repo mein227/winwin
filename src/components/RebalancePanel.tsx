@@ -455,8 +455,11 @@ export function RebalancePanel({
             <div className="flex flex-col gap-1 border-b border-slate-800 px-4 py-3">
               <h3 className="font-semibold text-white">再平衡建議</h3>
               <p className="text-xs text-slate-500">
-                偏離未達 {formatNumber(settings.rebalanceThreshold, 1)} 個百分點時建議不動作，
-                避免頻繁交易被手續費吃掉報酬
+                {plan.trigger === 'none'
+                  ? `整體股權仍在 ${formatNumber(plan.equityLowerBound, 0)}%～${formatNumber(plan.equityUpperBound, 0)}% 範圍內，全部維持不動作，避免頻繁交易被手續費吃掉報酬`
+                  : plan.trigger === 'sell'
+                    ? `整體股權已超過 ${formatNumber(plan.equityUpperBound, 0)}%，停利收割：只賣出漲多的部位，將股權拉回 ${formatNumber(plan.equityTargetWeight, 0)}%`
+                    : `整體股權已低於 ${formatNumber(plan.equityLowerBound, 0)}%，逢低買進：只加碼跌深的部位，將股權拉回 ${formatNumber(plan.equityTargetWeight, 0)}%`}
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -627,9 +630,9 @@ export function RebalancePanel({
             note: '正數為買進、負數為賣出；賣出股數不會超過持有股數',
           },
           {
-            label: '動態觸發門檻',
-            formula: '股權上限／下限 = 股權目標 ± 允許偏離；碰到界線才建議調整',
-            note: `目前為 ${formatNumber(plan.equityLowerBound, 0)}%～${formatNumber(plan.equityUpperBound, 0)}%，回到 ${formatNumber(plan.equityTargetWeight, 0)}% 後停止交易`,
+            label: '動態觸發門檻（唯一觸發條件）',
+            formula: '整體股權（市值）超過上限只賣、低於下限只買，區間內全部不動作',
+            note: `目前界線 ${formatNumber(plan.equityLowerBound, 0)}%～${formatNumber(plan.equityUpperBound, 0)}%，回到 ${formatNumber(plan.equityTargetWeight, 0)}% 後停止交易；個別標的偏離不會單獨觸發交易`,
           },
           {
             label: '定期檢查',
