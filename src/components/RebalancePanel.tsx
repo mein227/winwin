@@ -88,6 +88,60 @@ export function RebalancePanel({
   const symbols = exposure.items.map((item) => item.symbol)
   const riskParityAvailable = (risk?.assets.length ?? 0) > 0
   const equityTarget = 100 - settings.cashTargetWeight
+
+  const explicitTargets = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const setting of assetSettings) {
+      const weight = Number(setting.targetWeight)
+      if (Number.isFinite(weight) && weight > 0) {
+        map[setting.symbol.toUpperCase()] = weight
+      }
+    }
+    return map
+  }, [assetSettings])
+
+  const presets = useMemo(() => {
+    const equal = equalWeightTargets(symbols, settings.cashTargetWeight)
+    const current = currentWeightTargets(exposure.items, settings.cashTargetWeight)
+    const parity = risk
+      ? riskParityTargets(
+          risk.assets.map((asset) => ({
+            symbol: asset.symbol,
+            annualVolatility: asset.annualVolatility,
+          })),
+          settings.cashTargetWeight,
+        )
+      : {}
+    return { equal, current, parity }
+  }, [symbols, exposure.items, risk, settings.cashTargetWeight])
+
+  /** 四捨五入到 0.1% 後比對，避免正規化誤差讓選中狀態閃動 */
+  const matchesPreset = (preset: Record<string, number>) => {
+    const keys = new Set([...Object.keys(explicitTargets), ...Object.keys(preset)])
+    if (keys.size === 0) return false
+    for (const key of keys) {
+      if (Math.abs((explicitTargets[key] ?? 0) - (preset[key] ?? 0)) > 0.15) return false
+    }
+    return true
+  }
+
+  const activePreset =
+    Object.keys(explicitTargets).length === 0
+      ? 'auto'
+      : matchesPreset(presets.equal)
+        ? 'equal'
+        : matchesPreset(presets.current)
+          ? 'current'
+          : riskParityAvailable && matchesPreset(presets.parity)
+            ? 'parity'
+            : 'custom'
+
+  const presetClass = (id: string) =>
+    `inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition disabled:opacity-50 ${
+      activePreset === id
+        ? 'border-teal-400 bg-teal-500/25 text-teal-100'
+        : 'border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800'
+    }`
   const reviewMonths =
     settings.rebalanceReviewMonths?.length === 2 ? settings.rebalanceReviewMonths : [6, 12]
 
@@ -100,18 +154,19 @@ export function RebalancePanel({
         .map((setting) => [setting.symbol.toUpperCase(), setting.targetWeight ?? 0]),
     )
     const existingTotal = Object.values(existing).reduce((sum, weight) => sum + weight, 0)
-    const weights =
-      existingTotal > 0
-        ? Object.fromEntries(
-            Object.entries(existing).map(([symbol, weight]) => [
-              symbol,
-              (weight / existingTotal) * nextEquity,
-            ]),
-          )
-        : currentWeightTargets(exposure.items, nextCash)
 
     onUpdateSettings({ cashTargetWeight: nextCash })
-    onApplyTargetWeights(weights)
+    // 沒有個別目標時維持自動模式，股票內部比例交由計算層依市值推算
+    if (existingTotal > 0) {
+      onApplyTargetWeights(
+        Object.fromEntries(
+          Object.entries(existing).map(([symbol, weight]) => [
+            symbol,
+            (weight / existingTotal) * nextEquity,
+          ]),
+        ),
+      )
+    }
   }
 
   const updateReviewMonth = (index: number, month: number) => {
@@ -120,25 +175,13 @@ export function RebalancePanel({
     onUpdateSettings({ rebalanceReviewMonths: next })
   }
 
-  const applyEqual = () =>
-    onApplyTargetWeights(equalWeightTargets(symbols, settings.cashTargetWeight))
+  const applyEqual = () => onApplyTargetWeights(presets.equal)
 
-  const applyCurrent = () =>
-    onApplyTargetWeights(
-      currentWeightTargets(exposure.items, settings.cashTargetWeight),
-    )
+  const applyCurrent = () => onApplyTargetWeights(presets.current)
 
   const applyRiskParity = () => {
-    if (!risk) return
-    onApplyTargetWeights(
-      riskParityTargets(
-        risk.assets.map((asset) => ({
-          symbol: asset.symbol,
-          annualVolatility: asset.annualVolatility,
-        })),
-        settings.cashTargetWeight,
-      ),
-    )
+    if (!riskParityAvailable) return
+    onApplyTargetWeights(presets.parity)
   }
 
   return (
@@ -274,44 +317,52 @@ export function RebalancePanel({
               {basisOptions.find((option) => option.id === settings.rebalanceBasis)?.hint}
             </p>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={applyEqual}
-            disabled={symbols.length === 0}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-50"
-          >
-            <Scale className="h-4 w-4" />
-            等權重
-          </button>
-          <button
-            type="button"
-            onClick={applyCurrent}
-            disabled={symbols.length === 0}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-50"
-          >
-            <Shuffle className="h-4 w-4" />
-            依現有市值
-          </button>
-          <button
-            type="button"
-            onClick={applyRiskParity}
-            disabled={!riskParityAvailable}
-            title={riskParityAvailable ? '' : '請先到「報酬風險」頁執行分析'}
-            className="inline-flex items-center gap-2 rounded-xl border border-teal-500/40 bg-teal-500/15 px-3 py-2 text-sm text-teal-200 hover:bg-teal-500/25 disabled:opacity-50"
-          >
-            <Wand className="h-4 w-4" />
-            風險平價
-          </button>
-          <button
-            type="button"
-            onClick={onClearTargetWeights}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800"
-          >
-            <Eraser className="h-4 w-4" />
-            依目前比例重設
-          </button>
+          <p className="mt-4 mb-1.5 text-sm text-slate-400">股票部位的內部分配</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={onClearTargetWeights}
+              className={presetClass('auto')}
+            >
+              <Eraser className="h-4 w-4" />
+              依目前比例重設
+            </button>
+            <button
+              type="button"
+              onClick={applyEqual}
+              disabled={symbols.length === 0}
+              className={presetClass('equal')}
+            >
+              <Scale className="h-4 w-4" />
+              等權重
+            </button>
+            <button
+              type="button"
+              onClick={applyCurrent}
+              disabled={symbols.length === 0}
+              className={presetClass('current')}
+            >
+              <Shuffle className="h-4 w-4" />
+              依現有市值
+            </button>
+            <button
+              type="button"
+              onClick={applyRiskParity}
+              disabled={!riskParityAvailable}
+              title={riskParityAvailable ? '' : '請先到「報酬風險」頁執行分析'}
+              className={presetClass('parity')}
+            >
+              <Wand className="h-4 w-4" />
+              風險平價
+            </button>
           </div>
+          <p className="mt-1.5 text-xs text-slate-500">
+            {activePreset === 'auto'
+              ? '目前為自動模式：股票內部比例跟著市值變動，只調整股權與現金的比重'
+              : activePreset === 'custom'
+                ? '目前為自訂比例：可在下方表格逐檔調整目標權重'
+                : '已套用上方選取的分配方式，可在下方表格再微調'}
+          </p>
         </details>
       </div>
 

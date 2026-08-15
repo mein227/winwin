@@ -396,7 +396,8 @@ export function buildRebalancePlan(
     const diffValue = targetValue - currentValue
     const currentWeight = base > 0 ? (currentValue / base) * 100 : 0
     const diffWeight = targetWeight - currentWeight
-    const overThreshold = trigger !== 'none'
+    // 整體股權碰到上下限時全面調整；個別標的偏離過大時也單獨調整回目標
+    const overThreshold = trigger !== 'none' || Math.abs(diffWeight) >= threshold
 
     const perShare = basis === 'exposure' ? price * leverage : price
     let shares = perShare !== 0 ? diffValue / perShare : 0
@@ -467,8 +468,7 @@ export function buildRebalancePlan(
     estimatedFee: 0,
     estimatedTax: 0,
     action: 'hold',
-    overThreshold:
-      Math.abs(cashTargetWeight - cashCurrentWeight) >= settings.rebalanceThreshold,
+    overThreshold: Math.abs(cashTargetWeight - cashCurrentWeight) >= threshold,
   })
 
   return {
