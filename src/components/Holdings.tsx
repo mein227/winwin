@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { LoaderCircle, RefreshCw } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, LoaderCircle, RefreshCw } from 'lucide-react'
 import type { Holding } from '../types'
 import {
   formatCurrency,
@@ -16,6 +16,46 @@ interface HoldingsProps {
   onUpdatePrices: (updates: { symbol: string; currentPrice: number }[]) => void
 }
 
+type SortKey =
+  | 'symbol'
+  | 'shares'
+  | 'avgCost'
+  | 'currentPrice'
+  | 'marketValue'
+  | 'unrealizedPnL'
+  | 'unrealizedPnLPercent'
+  | 'weight'
+  | 'realizedPnL'
+
+type SortDirection = 'asc' | 'desc'
+
+interface SortColumn {
+  key: SortKey
+  label: string
+  align: 'left' | 'right'
+}
+
+const SORT_COLUMNS: SortColumn[] = [
+  { key: 'symbol', label: '股票', align: 'left' },
+  { key: 'shares', label: '股數', align: 'right' },
+  { key: 'avgCost', label: '平均成本', align: 'right' },
+  { key: 'currentPrice', label: '現價', align: 'right' },
+  { key: 'marketValue', label: '市值', align: 'right' },
+  { key: 'unrealizedPnL', label: '未實現損益', align: 'right' },
+  { key: 'unrealizedPnLPercent', label: '報酬率', align: 'right' },
+  { key: 'weight', label: '權重', align: 'right' },
+  { key: 'realizedPnL', label: '已實現', align: 'right' },
+]
+
+function compareHoldings(a: Holding, b: Holding, key: SortKey): number {
+  if (key === 'symbol') {
+    const bySymbol = a.symbol.localeCompare(b.symbol, 'zh-Hant')
+    if (bySymbol !== 0) return bySymbol
+    return a.name.localeCompare(b.name, 'zh-Hant')
+  }
+  return a[key] - b[key]
+}
+
 export function Holdings({ holdings, onUpdatePrice, onUpdatePrices }: HoldingsProps) {
   const active = holdings.filter((h) => h.shares > 0)
   const closed = holdings.filter((h) => h.shares <= 0 && Math.abs(h.realizedPnL) > 0)
@@ -23,6 +63,23 @@ export function Holdings({ holdings, onUpdatePrice, onUpdatePrices }: HoldingsPr
   const [priceInput, setPriceInput] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [message, setMessage] = useState('')
+  const [sortKey, setSortKey] = useState<SortKey>('marketValue')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+
+  const sortedActive = [...active].sort((a, b) => {
+    const result = compareHoldings(a, b, sortKey)
+    return sortDirection === 'asc' ? result : -result
+  })
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+      return
+    }
+    setSortKey(key)
+    // 股票代號預設升冪，其餘數值欄位預設降冪（大到小）
+    setSortDirection(key === 'symbol' ? 'asc' : 'desc')
+  }
 
   const startEdit = (h: Holding) => {
     setEditingSymbol(h.symbol)
@@ -103,19 +160,47 @@ export function Holdings({ holdings, onUpdatePrice, onUpdatePrices }: HoldingsPr
             <table className="min-w-full text-left text-sm">
               <thead className="border-b border-slate-800 bg-slate-950/60 text-slate-400">
                 <tr>
-                  <th className="px-4 py-3 font-medium">股票</th>
-                  <th className="px-4 py-3 font-medium text-right">股數</th>
-                  <th className="px-4 py-3 font-medium text-right">平均成本</th>
-                  <th className="px-4 py-3 font-medium text-right">現價</th>
-                  <th className="px-4 py-3 font-medium text-right">市值</th>
-                  <th className="px-4 py-3 font-medium text-right">未實現損益</th>
-                  <th className="px-4 py-3 font-medium text-right">報酬率</th>
-                  <th className="px-4 py-3 font-medium text-right">權重</th>
-                  <th className="px-4 py-3 font-medium text-right">已實現</th>
+                  {SORT_COLUMNS.map((column) => {
+                    const isActive = sortKey === column.key
+                    const SortIcon = !isActive
+                      ? ArrowUpDown
+                      : sortDirection === 'asc'
+                        ? ArrowUp
+                        : ArrowDown
+
+                    return (
+                      <th
+                        key={column.key}
+                        className={`px-4 py-3 font-medium ${column.align === 'right' ? 'text-right' : ''}`}
+                        aria-sort={
+                          isActive
+                            ? sortDirection === 'asc'
+                              ? 'ascending'
+                              : 'descending'
+                            : 'none'
+                        }
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleSort(column.key)}
+                          className={`inline-flex items-center gap-1.5 rounded-lg px-1 py-0.5 transition-colors hover:text-teal-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/50 ${
+                            column.align === 'right' ? 'ml-auto flex-row-reverse' : ''
+                          } ${isActive ? 'text-teal-300' : 'text-slate-400'}`}
+                          title={`依${column.label}排序`}
+                        >
+                          <span>{column.label}</span>
+                          <SortIcon
+                            className={`h-3.5 w-3.5 shrink-0 ${isActive ? 'text-teal-400' : 'text-slate-600'}`}
+                            aria-hidden
+                          />
+                        </button>
+                      </th>
+                    )
+                  })}
                 </tr>
               </thead>
               <tbody>
-                {active.map((h) => (
+                {sortedActive.map((h) => (
                   <tr
                     key={h.symbol}
                     className="border-b border-slate-800/70 last:border-0 hover:bg-slate-800/30"
