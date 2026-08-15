@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Eraser, Scale, Shuffle, TriangleAlert, Wand } from 'lucide-react'
+import { CalendarClock, Eraser, Scale, Shuffle, TriangleAlert, Wand } from 'lucide-react'
 import type {
   AllocationSettings,
   AssetSetting,
@@ -43,6 +43,15 @@ const basisOptions: { id: RebalanceBasis; label: string; hint: string }[] = [
   { id: 'value', label: '依市值', hint: '目標權重套用在持股市值，適合一般存股配置' },
   { id: 'exposure', label: '依曝險', hint: '目標權重套用在曝險金額，持有正 2 時更能控制風險' },
 ]
+
+function nextReviewLabel(months: number[]): string {
+  const now = new Date()
+  const sorted = [...months].filter((month) => month >= 1 && month <= 12).sort((a, b) => a - b)
+  const nextMonth = sorted.find((month) => month > now.getMonth() + 1)
+  const year = nextMonth ? now.getFullYear() : now.getFullYear() + 1
+  const month = nextMonth ?? sorted[0]
+  return month ? `${year} 年 ${month} 月底` : '尚未設定'
+}
 
 export function RebalancePanel({
   plan,
@@ -78,6 +87,38 @@ export function RebalancePanel({
 
   const symbols = exposure.items.map((item) => item.symbol)
   const riskParityAvailable = (risk?.assets.length ?? 0) > 0
+  const equityTarget = 100 - settings.cashTargetWeight
+  const reviewMonths =
+    settings.rebalanceReviewMonths?.length === 2 ? settings.rebalanceReviewMonths : [6, 12]
+
+  const updateEquityTarget = (value: number) => {
+    const nextEquity = Math.min(Math.max(value || 0, 0), 100)
+    const nextCash = 100 - nextEquity
+    const existing = Object.fromEntries(
+      assetSettings
+        .filter((setting) => setting.targetWeight !== undefined)
+        .map((setting) => [setting.symbol.toUpperCase(), setting.targetWeight ?? 0]),
+    )
+    const existingTotal = Object.values(existing).reduce((sum, weight) => sum + weight, 0)
+    const weights =
+      existingTotal > 0
+        ? Object.fromEntries(
+            Object.entries(existing).map(([symbol, weight]) => [
+              symbol,
+              (weight / existingTotal) * nextEquity,
+            ]),
+          )
+        : currentWeightTargets(exposure.items, nextCash)
+
+    onUpdateSettings({ cashTargetWeight: nextCash })
+    onApplyTargetWeights(weights)
+  }
+
+  const updateReviewMonth = (index: number, month: number) => {
+    const next = [...reviewMonths]
+    next[index] = month
+    onUpdateSettings({ rebalanceReviewMonths: next })
+  }
 
   const applyEqual = () =>
     onApplyTargetWeights(equalWeightTargets(symbols, settings.cashTargetWeight))
@@ -103,11 +144,117 @@ export function RebalancePanel({
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
-        <h3 className="text-base font-semibold text-white">再平衡設定</h3>
-        <div className="mt-4 grid gap-4 lg:grid-cols-4">
-          <div className="lg:col-span-2">
+        <h3 className="text-base font-semibold text-white">股權／現金再平衡策略</h3>
+        <p className="mt-1 text-sm text-slate-400">
+          先決定整體資產配置；只有碰到上下限時才交易，平時每半年檢查一次。
+        </p>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+            <p className="text-sm font-semibold text-white">1. 設定目標配置</p>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <label className="block space-y-1.5">
+                <span className="text-xs text-slate-400">股權部位 %</span>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  max="100"
+                  value={equityTarget}
+                  onChange={(event) => updateEquityTarget(Number(event.target.value))}
+                  className="w-full rounded-xl border border-teal-500/50 bg-slate-950 px-3 py-2.5 font-semibold text-teal-200 outline-none focus:border-teal-400"
+                />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-xs text-slate-400">現金部位 %</span>
+                <input
+                  type="number"
+                  value={settings.cashTargetWeight}
+                  readOnly
+                  aria-label="現金部位（自動計算）"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2.5 text-sky-200"
+                />
+              </label>
+            </div>
+            <p className="mt-2 text-xs text-slate-500">兩者合計固定為 100%，現金會自動計算。</p>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+            <p className="text-sm font-semibold text-white">2. 設定動態觸發範圍</p>
+            <label className="mt-3 block space-y-1.5">
+              <span className="text-xs text-slate-400">允許偏離（百分點）</span>
+              <input
+                type="number"
+                step="1"
+                min="0"
+                max="50"
+                value={settings.rebalanceThreshold}
+                onChange={(event) =>
+                  onUpdateSettings({
+                    rebalanceThreshold: Math.min(
+                      Math.max(Number(event.target.value) || 0, 0),
+                      50,
+                    ),
+                  })
+                }
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-teal-500"
+              />
+            </label>
+            <div className="mt-3 space-y-1.5 text-xs">
+              <p className="text-rose-300">
+                股權達 {formatNumber(plan.equityUpperBound, 0)}%：停利賣出，回到{' '}
+                {formatNumber(plan.equityTargetWeight, 0)}%
+              </p>
+              <p className="text-emerald-300">
+                股權降至 {formatNumber(plan.equityLowerBound, 0)}%：動用現金買進，回到{' '}
+                {formatNumber(plan.equityTargetWeight, 0)}%
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+            <div className="flex items-center gap-2">
+              <CalendarClock className="h-4 w-4 text-sky-300" />
+              <p className="text-sm font-semibold text-white">3. 每半年定期檢查</p>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <label className="space-y-1.5">
+                <span className="text-xs text-slate-400">上半年</span>
+                <select
+                  value={reviewMonths[0]}
+                  onChange={(event) => updateReviewMonth(0, Number(event.target.value))}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-teal-500"
+                >
+                  {[1, 2, 3, 4, 5, 6].map((month) => (
+                    <option key={month} value={month}>{month} 月底</option>
+                  ))}
+                </select>
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-xs text-slate-400">下半年</span>
+                <select
+                  value={reviewMonths[1]}
+                  onChange={(event) => updateReviewMonth(1, Number(event.target.value))}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-teal-500"
+                >
+                  {[7, 8, 9, 10, 11, 12].map((month) => (
+                    <option key={month} value={month}>{month} 月底</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <p className="mt-3 text-xs text-sky-300">下次檢查：{nextReviewLabel(reviewMonths)}</p>
+            <p className="mt-1 text-xs text-slate-500">未碰到上下限時不交易，降低摩擦成本。</p>
+          </div>
+        </div>
+
+        <details className="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 p-3">
+          <summary className="cursor-pointer text-sm font-medium text-slate-300">
+            進階設定：個別標的分配與計算基準
+          </summary>
+          <div className="mt-4">
             <p className="mb-1.5 text-sm text-slate-400">計算基準</p>
-            <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-950 p-1">
+            <div className="grid max-w-xl grid-cols-2 gap-2 rounded-xl bg-slate-950 p-1">
               {basisOptions.map((option) => (
                 <button
                   key={option.id}
@@ -127,36 +274,7 @@ export function RebalancePanel({
               {basisOptions.find((option) => option.id === settings.rebalanceBasis)?.hint}
             </p>
           </div>
-          <label className="block space-y-1.5">
-            <span className="text-sm text-slate-400">現金目標權重 %</span>
-            <input
-              type="number"
-              step="any"
-              min="0"
-              max="100"
-              value={settings.cashTargetWeight}
-              onChange={(e) =>
-                onUpdateSettings({ cashTargetWeight: Number(e.target.value) || 0 })
-              }
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-teal-500"
-            />
-          </label>
-          <label className="block space-y-1.5">
-            <span className="text-sm text-slate-400">觸發門檻（百分點）</span>
-            <input
-              type="number"
-              step="any"
-              min="0"
-              value={settings.rebalanceThreshold}
-              onChange={(e) =>
-                onUpdateSettings({ rebalanceThreshold: Number(e.target.value) || 0 })
-              }
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-teal-500"
-            />
-          </label>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
             onClick={applyEqual}
@@ -191,9 +309,32 @@ export function RebalancePanel({
             className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800"
           >
             <Eraser className="h-4 w-4" />
-            清除目標
+            依目前比例重設
           </button>
-        </div>
+          </div>
+        </details>
+      </div>
+
+      <div
+        className={`rounded-2xl border px-4 py-3 ${
+          plan.trigger === 'sell'
+            ? 'border-rose-500/30 bg-rose-500/10'
+            : plan.trigger === 'buy'
+              ? 'border-emerald-500/30 bg-emerald-500/10'
+              : 'border-slate-800 bg-slate-900/60'
+        }`}
+      >
+        <p className="text-sm font-semibold text-white">
+          目前股權 {formatNumber(plan.equityCurrentWeight, 1)}% · 現金{' '}
+          {formatNumber(cashRow?.currentWeight ?? 0, 1)}%
+        </p>
+        <p className="mt-1 text-xs text-slate-400">
+          {plan.trigger === 'sell'
+            ? `已達 ${formatNumber(plan.equityUpperBound, 0)}% 停利線，建議賣出部分股票，將現金拉回 ${formatNumber(settings.cashTargetWeight, 0)}%。`
+            : plan.trigger === 'buy'
+              ? `已達 ${formatNumber(plan.equityLowerBound, 0)}% 買進線，建議動用現金加碼，將股權拉回 ${formatNumber(plan.equityTargetWeight, 0)}%。`
+              : `仍在 ${formatNumber(plan.equityLowerBound, 0)}%～${formatNumber(plan.equityUpperBound, 0)}% 範圍內，暫時不需交易。`}
+        </p>
       </div>
 
       {plan.normalized && (
@@ -435,9 +576,14 @@ export function RebalancePanel({
             note: '正數為買進、負數為賣出；賣出股數不會超過持有股數',
           },
           {
-            label: '偏離與觸發門檻',
-            formula: '偏離 = 目標權重 − 目前權重，|偏離| ≥ 門檻 才建議調整',
-            note: '常見做法是 5 個百分點或每半年／一年檢視一次，減少交易成本與稅費',
+            label: '動態觸發門檻',
+            formula: '股權上限／下限 = 股權目標 ± 允許偏離；碰到界線才建議調整',
+            note: `目前為 ${formatNumber(plan.equityLowerBound, 0)}%～${formatNumber(plan.equityUpperBound, 0)}%，回到 ${formatNumber(plan.equityTargetWeight, 0)}% 後停止交易`,
+          },
+          {
+            label: '定期檢查',
+            formula: `每年 ${[...reviewMonths].sort((a, b) => a - b).join(' 月底、')} 月底檢查一次`,
+            note: '若整體股權仍在上下限內就不交易，減少手續費、稅費與價格摩擦',
           },
           {
             label: '執行後現金',

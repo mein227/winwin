@@ -90,6 +90,8 @@ export interface AllocationSettings {
   cashTargetWeight: number
   /** 再平衡觸發門檻（百分點） */
   rebalanceThreshold: number
+  /** 未觸發門檻時，定期檢查配置的月份（1–12） */
+  rebalanceReviewMonths: number[]
   rebalanceBasis: RebalanceBasis
   /** 無風險利率 %，用於 Sharpe */
   riskFreeRate: number
@@ -177,6 +179,15 @@ export interface RebalancePlan {
   basis: RebalanceBasis
   /** 計算基準金額（總淨值） */
   base: number
+  /** 整體股權目前權重 % */
+  equityCurrentWeight: number
+  /** 整體股權目標權重 % */
+  equityTargetWeight: number
+  /** 整體股權觸發下限 % */
+  equityLowerBound: number
+  /** 整體股權觸發上限 % */
+  equityUpperBound: number
+  trigger: 'buy' | 'sell' | 'none'
   rows: RebalanceRow[]
   totalBuy: number
   totalSell: number
