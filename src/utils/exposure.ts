@@ -16,8 +16,9 @@ import { suggestFee, suggestTax } from './calculations'
 export const CASH_KEY = '__CASH__'
 
 export const defaultAllocationSettings: AllocationSettings = {
-  cashTargetWeight: 20,
-  rebalanceThreshold: 5,
+  cashTargetWeight: 30,
+  rebalanceThreshold: 10,
+  rebalanceReviewMonths: [6, 12],
   rebalanceBasis: 'value',
   riskFreeRate: 1.5,
   lotSize: 1000,
@@ -344,16 +345,39 @@ export function buildRebalancePlan(
     }
   }
 
-  const cashTarget = Math.max(Number(settings.cashTargetWeight) || 0, 0)
+  const cashTarget = Math.min(Math.max(Number(settings.cashTargetWeight) || 0, 0), 100)
   const symbols = new Set<string>([
     ...exposure.items.map((item) => item.symbol.toUpperCase()),
     ...targets.keys(),
   ])
 
+  // 未設定個別標的目標時，維持目前股票內部比例，只調整整體股權／現金比重。
+  if (targets.size === 0 && exposure.items.length > 0) {
+    const inferred = currentWeightTargets(exposure.items, cashTarget)
+    for (const [symbol, weight] of Object.entries(inferred)) {
+      targets.set(symbol, weight)
+    }
+  }
+
   const targetSum =
     cashTarget + [...symbols].reduce((sum, symbol) => sum + (targets.get(symbol) ?? 0), 0)
   const normalized = targetSum > 0 && Math.abs(targetSum - 100) > 0.01
   const factor = normalized ? 100 / targetSum : 1
+  const equityTargetWeight = Math.max(100 - cashTarget * factor, 0)
+  const equityCurrentValue = exposure.items.reduce(
+    (sum, item) => sum + (basis === 'exposure' ? item.exposure : item.marketValue),
+    0,
+  )
+  const equityCurrentWeight = base > 0 ? (equityCurrentValue / base) * 100 : 0
+  const threshold = Math.max(Number(settings.rebalanceThreshold) || 0, 0)
+  const equityLowerBound = Math.max(equityTargetWeight - threshold, 0)
+  const equityUpperBound = Math.min(equityTargetWeight + threshold, 100)
+  const trigger: RebalancePlan['trigger'] =
+    equityCurrentWeight >= equityUpperBound
+      ? 'sell'
+      : equityCurrentWeight <= equityLowerBound
+        ? 'buy'
+        : 'none'
 
   const rows: RebalanceRow[] = []
   let totalBuy = 0
@@ -372,7 +396,7 @@ export function buildRebalancePlan(
     const diffValue = targetValue - currentValue
     const currentWeight = base > 0 ? (currentValue / base) * 100 : 0
     const diffWeight = targetWeight - currentWeight
-    const overThreshold = Math.abs(diffWeight) >= settings.rebalanceThreshold
+    const overThreshold = trigger !== 'none'
 
     const perShare = basis === 'exposure' ? price * leverage : price
     let shares = perShare !== 0 ? diffValue / perShare : 0
@@ -450,6 +474,11 @@ export function buildRebalancePlan(
   return {
     basis,
     base,
+    equityCurrentWeight,
+    equityTargetWeight,
+    equityLowerBound,
+    equityUpperBound,
+    trigger,
     rows,
     totalBuy,
     totalSell,
