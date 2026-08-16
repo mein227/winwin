@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, ArrowUpDown, LoaderCircle, RefreshCw } from 'lucide-react'
 import type { Holding } from '../types'
 import {
@@ -22,6 +22,7 @@ type SortKey =
   | 'avgCost'
   | 'currentPrice'
   | 'marketValue'
+  | 'dailyPnL'
   | 'unrealizedPnL'
   | 'unrealizedPnLPercent'
   | 'weight'
@@ -41,19 +42,31 @@ const SORT_COLUMNS: SortColumn[] = [
   { key: 'avgCost', label: '平均成本', align: 'right' },
   { key: 'currentPrice', label: '現價', align: 'right' },
   { key: 'marketValue', label: '市值', align: 'right' },
+  { key: 'dailyPnL', label: '今日損益', align: 'right' },
   { key: 'unrealizedPnL', label: '未實現損益', align: 'right' },
   { key: 'unrealizedPnLPercent', label: '報酬率', align: 'right' },
   { key: 'weight', label: '權重', align: 'right' },
   { key: 'realizedPnL', label: '已實現', align: 'right' },
 ]
 
-function compareHoldings(a: Holding, b: Holding, key: SortKey): number {
+const STICKY_SYMBOL_TH =
+  'sticky left-0 z-20 min-w-[7.5rem] bg-slate-950 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.55)]'
+const STICKY_SYMBOL_TD =
+  'sticky left-0 z-10 min-w-[7.5rem] bg-slate-900 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.45)] group-hover:bg-slate-800'
+
+function compareHoldings(a: Holding, b: Holding, key: Exclude<SortKey, 'dailyPnL'>): number {
   if (key === 'symbol') {
     const bySymbol = a.symbol.localeCompare(b.symbol, 'zh-Hant')
     if (bySymbol !== 0) return bySymbol
     return a.name.localeCompare(b.name, 'zh-Hant')
   }
   return a[key] - b[key]
+}
+
+function dailyPnLOf(holding: Holding, changes: Record<string, number>): number | null {
+  const change = changes[holding.symbol.toUpperCase()]
+  if (change === undefined) return null
+  return holding.shares * change
 }
 
 export function Holdings({ holdings, onUpdatePrice, onUpdatePrices }: HoldingsProps) {
@@ -65,8 +78,66 @@ export function Holdings({ holdings, onUpdatePrice, onUpdatePrices }: HoldingsPr
   const [message, setMessage] = useState('')
   const [sortKey, setSortKey] = useState<SortKey>('marketValue')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [dailyChanges, setDailyChanges] = useState<Record<string, number>>({})
+  const onUpdatePricesRef = useRef(onUpdatePrices)
+  onUpdatePricesRef.current = onUpdatePrices
+
+  const activeSymbolsKey = useMemo(
+    () =>
+      holdings
+        .filter((h) => h.shares > 0)
+        .map((h) => h.symbol.toUpperCase())
+        .sort()
+        .join('|'),
+    [holdings],
+  )
+
+  const applyQuotes = (quotes: { symbol: string; price: number; change: number }[]) => {
+    if (quotes.length === 0) return
+    onUpdatePricesRef.current(
+      quotes.map((q) => ({
+        symbol: q.symbol,
+        currentPrice: q.price,
+      })),
+    )
+    setDailyChanges((prev) => {
+      const next = { ...prev }
+      for (const q of quotes) {
+        next[q.symbol.toUpperCase()] = q.change
+      }
+      return next
+    })
+  }
+
+  useEffect(() => {
+    if (!activeSymbolsKey) return
+    const symbols = activeSymbolsKey.split('|').filter(Boolean)
+    if (symbols.length === 0) return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { quotes } = await fetchStockQuotes(symbols)
+        if (!cancelled) applyQuotes(quotes)
+      } catch {
+        // 進入頁面時自動更新失敗不打擾使用者，可再按「一鍵更新市價」
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeSymbolsKey])
 
   const sortedActive = [...active].sort((a, b) => {
+    if (sortKey === 'dailyPnL') {
+      const aVal = dailyPnLOf(a, dailyChanges)
+      const bVal = dailyPnLOf(b, dailyChanges)
+      if (aVal == null && bVal == null) return 0
+      if (aVal == null) return 1
+      if (bVal == null) return -1
+      return sortDirection === 'asc' ? aVal - bVal : bVal - aVal
+    }
     const result = compareHoldings(a, b, sortKey)
     return sortDirection === 'asc' ? result : -result
   })
@@ -100,14 +171,7 @@ export function Holdings({ holdings, onUpdatePrice, onUpdatePrices }: HoldingsPr
     setMessage('')
     try {
       const { quotes, errors } = await fetchStockQuotes(active.map((h) => h.symbol))
-      if (quotes.length > 0) {
-        onUpdatePrices(
-          quotes.map((q) => ({
-            symbol: q.symbol,
-            currentPrice: q.price,
-          })),
-        )
-      }
+      applyQuotes(quotes)
       const ok = quotes.length
       const fail = errors.length
       setMessage(
@@ -167,11 +231,14 @@ export function Holdings({ holdings, onUpdatePrice, onUpdatePrices }: HoldingsPr
                       : sortDirection === 'asc'
                         ? ArrowUp
                         : ArrowDown
+                    const isSymbol = column.key === 'symbol'
 
                     return (
                       <th
                         key={column.key}
-                        className={`px-4 py-3 font-medium ${column.align === 'right' ? 'text-right' : ''}`}
+                        className={`px-4 py-3 font-medium ${
+                          column.align === 'right' ? 'text-right' : ''
+                        } ${isSymbol ? STICKY_SYMBOL_TH : ''}`}
                         aria-sort={
                           isActive
                             ? sortDirection === 'asc'
@@ -200,74 +267,85 @@ export function Holdings({ holdings, onUpdatePrice, onUpdatePrices }: HoldingsPr
                 </tr>
               </thead>
               <tbody>
-                {sortedActive.map((h) => (
-                  <tr
-                    key={h.symbol}
-                    className="border-b border-slate-800/70 last:border-0 hover:bg-slate-800/30"
-                  >
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-white">{h.symbol}</div>
-                      <div className="text-xs text-slate-500">{h.name}</div>
-                      <StockExternalLinks symbol={h.symbol} />
-                    </td>
-                    <td className="px-4 py-3 text-right text-slate-200">
-                      {formatNumber(h.shares, 0)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-slate-200">
-                      {formatNumber(h.avgCost)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {editingSymbol === h.symbol ? (
-                        <div className="inline-flex items-center gap-1">
-                          <input
-                            autoFocus
-                            type="number"
-                            step="any"
-                            value={priceInput}
-                            onChange={(e) => setPriceInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') savePrice(h.symbol)
-                              if (e.key === 'Escape') setEditingSymbol(null)
-                            }}
-                            className="w-24 rounded-lg border border-teal-500 bg-slate-950 px-2 py-1 text-right text-white outline-none"
-                          />
+                {sortedActive.map((h) => {
+                  const dailyPnL = dailyPnLOf(h, dailyChanges)
+
+                  return (
+                    <tr
+                      key={h.symbol}
+                      className="group border-b border-slate-800/70 last:border-0 hover:bg-slate-800/40"
+                    >
+                      <td className={`px-4 py-3 ${STICKY_SYMBOL_TD}`}>
+                        <div className="font-medium text-white">{h.symbol}</div>
+                        <div className="text-xs text-slate-500">{h.name}</div>
+                        <StockExternalLinks symbol={h.symbol} />
+                      </td>
+                      <td className="px-4 py-3 text-right text-slate-200">
+                        {formatNumber(h.shares, 0)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-slate-200">
+                        {formatNumber(h.avgCost)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {editingSymbol === h.symbol ? (
+                          <div className="inline-flex items-center gap-1">
+                            <input
+                              autoFocus
+                              type="number"
+                              step="any"
+                              value={priceInput}
+                              onChange={(e) => setPriceInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') savePrice(h.symbol)
+                                if (e.key === 'Escape') setEditingSymbol(null)
+                              }}
+                              className="w-24 rounded-lg border border-teal-500 bg-slate-950 px-2 py-1 text-right text-white outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => savePrice(h.symbol)}
+                              className="rounded-lg bg-teal-500/20 px-2 py-1 text-xs text-teal-300"
+                            >
+                              存
+                            </button>
+                          </div>
+                        ) : (
                           <button
                             type="button"
-                            onClick={() => savePrice(h.symbol)}
-                            className="rounded-lg bg-teal-500/20 px-2 py-1 text-xs text-teal-300"
+                            onClick={() => startEdit(h)}
+                            className="inline-flex items-center gap-1 text-slate-200 hover:text-teal-300"
+                            title="手動更新現價"
                           >
-                            存
+                            {formatNumber(h.currentPrice)}
+                            <RefreshCw className="h-3.5 w-3.5 text-slate-500" />
                           </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => startEdit(h)}
-                          className="inline-flex items-center gap-1 text-slate-200 hover:text-teal-300"
-                          title="手動更新現價"
-                        >
-                          {formatNumber(h.currentPrice)}
-                          <RefreshCw className="h-3.5 w-3.5 text-slate-500" />
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right text-slate-200">
-                      {formatCurrency(h.marketValue)}
-                    </td>
-                    <td className={`px-4 py-3 text-right font-semibold ${pnlClass(h.unrealizedPnL)}`}>
-                      {formatCurrency(h.unrealizedPnL)}
-                    </td>
-                    <td className={`px-4 py-3 text-right font-semibold ${pnlClass(h.unrealizedPnL)}`}>
-                      {formatPercent(h.unrealizedPnLPercent)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-slate-300">
-                      {formatNumber(h.weight, 1)}%
-                    </td>
-                    <td className={`px-4 py-3 text-right ${pnlClass(h.realizedPnL)}`}>
-                      {formatCurrency(h.realizedPnL)}
-                    </td>
-                  </tr>
-                ))}
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right text-slate-200">
+                        {formatCurrency(h.marketValue)}
+                      </td>
+                      <td
+                        className={`px-4 py-3 text-right font-semibold ${
+                          dailyPnL == null ? 'text-slate-500' : pnlClass(dailyPnL)
+                        }`}
+                      >
+                        {dailyPnL == null ? '—' : formatCurrency(dailyPnL)}
+                      </td>
+                      <td className={`px-4 py-3 text-right font-semibold ${pnlClass(h.unrealizedPnL)}`}>
+                        {formatCurrency(h.unrealizedPnL)}
+                      </td>
+                      <td className={`px-4 py-3 text-right font-semibold ${pnlClass(h.unrealizedPnL)}`}>
+                        {formatPercent(h.unrealizedPnLPercent)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-slate-300">
+                        {formatNumber(h.weight, 1)}%
+                      </td>
+                      <td className={`px-4 py-3 text-right ${pnlClass(h.realizedPnL)}`}>
+                        {formatCurrency(h.realizedPnL)}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
