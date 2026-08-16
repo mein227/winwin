@@ -45,9 +45,11 @@ export interface BlueprintWeights {
 }
 
 export interface BlueprintMarketSnapshot {
-  benchmarkSymbol: string
-  benchmarkClose: number | null
-  benchmarkDate: string
+  /** 大盤代號，目前為台股加權指數 TAIEX */
+  indexSymbol: string
+  indexName: string
+  indexClose: number | null
+  indexDate: string
   leveragedDailyGain: number | null
 }
 
@@ -270,9 +272,7 @@ export function analyzeBlueprint(
 
   const marketPeak = Math.max(Number(settings.blueprintMarketPeak) || 0, 0)
   const marketClose =
-    market.benchmarkClose != null && market.benchmarkClose > 0
-      ? market.benchmarkClose
-      : null
+    market.indexClose != null && market.indexClose > 0 ? market.indexClose : null
   const drawdown =
     marketPeak > 0 && marketClose != null
       ? Math.max(((marketPeak - marketClose) / marketPeak) * 100, 0)
@@ -336,7 +336,7 @@ export function analyzeBlueprint(
       eligible: dipEligible,
       marketPeak,
       marketClose,
-      marketDate: market.benchmarkDate,
+      marketDate: market.indexDate,
       drawdown,
       tranchePercent: DIP_TRANCHE,
       trancheAmount,
@@ -349,11 +349,11 @@ export function analyzeBlueprint(
           : DIP_THRESHOLDS[triggeredTranches],
       note:
         marketPeak <= 0
-          ? `請先填寫 ${market.benchmarkSymbol} 的大盤最高收盤價`
+          ? `請先填寫${market.indexName}的歷史最高點`
           : marketClose == null
-            ? `正在取得 ${market.benchmarkSymbol} 最新收盤價，暫時無法計算回撤`
+            ? `正在取得${market.indexName}最新收盤，暫時無法計算回撤`
             : marketClose > marketPeak
-              ? `最新收盤 ${marketClose.toFixed(2)} 已高於設定高點，請把最高收盤價更新為新高`
+              ? `最新收盤 ${marketClose.toFixed(2)} 已高於設定高點，請把最高點更新為新高`
             : dipEligible
               ? `目前回撤 ${formatPct(drawdown)}，已達第 ${triggeredTranches} 筆加碼門檻（累計可投入淨值 ${triggeredTranches * DIP_TRANCHE}%）`
               : `目前回撤 ${formatPct(drawdown)}；跌至 30% 啟動第 1 筆，40% 第 2 筆，50% 第 3 筆`,
@@ -483,22 +483,22 @@ function buildActions(input: {
     actions.push({
       id: 'need-market-peak',
       severity: 'warn',
-      title: '請填寫大盤最高收盤價',
-      detail: '系統會用 0050 最新收盤價與此高點自動計算回撤，並在 30%、40%、50% 依序觸發三筆加碼。',
+      title: '請填寫加權指數歷史最高點',
+      detail: '系統會用加權指數最新收盤與此高點自動計算回撤，並在 30%、40%、50% 依序觸發三筆加碼。',
     })
   } else if (input.marketClose == null) {
     actions.push({
       id: 'market-loading',
       severity: 'info',
-      title: '正在取得大盤最新收盤價',
+      title: '正在取得加權指數最新收盤',
       detail: '行情更新完成後，系統會自動計算自高點回撤，不需要再手動輸入下跌百分比。',
     })
   } else if (input.marketClose > input.marketPeak) {
     actions.push({
       id: 'update-market-peak',
       severity: 'warn',
-      title: '大盤已創新高，請更新最高收盤價',
-      detail: `0050 最新收盤 ${input.marketClose.toFixed(2)} 已高於設定的 ${input.marketPeak.toFixed(2)}；更新高點後，30%／40%／50% 加碼基準才會正確。`,
+      title: '加權指數已創新高，請更新最高點',
+      detail: `加權指數最新收盤 ${input.marketClose.toFixed(2)} 已高於設定的 ${input.marketPeak.toFixed(2)}；更新高點後，30%／40%／50% 加碼基準才會正確。`,
     })
   } else if (input.dipEligible) {
     actions.push({

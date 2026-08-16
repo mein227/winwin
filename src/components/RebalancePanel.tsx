@@ -100,9 +100,10 @@ export function RebalancePanel({
   const blueprint = useMemo(
     () =>
       analyzeBlueprint(exposure, settings, {
-        benchmarkSymbol: market.benchmarkSymbol,
-        benchmarkClose: market.benchmarkQuote?.price ?? null,
-        benchmarkDate: market.benchmarkQuote?.date ?? '',
+        indexSymbol: market.indexSymbol,
+        indexName: market.indexQuote?.name ?? '加權指數',
+        indexClose: market.indexQuote?.price ?? null,
+        indexDate: market.indexQuote?.date ?? '',
         leveragedDailyGain: market.leveragedDailyGain,
       }),
     [exposure, market, settings],
@@ -220,10 +221,10 @@ export function RebalancePanel({
             '退休提領上限以此計算；可先填目前淨值，之後再更新真正高點',
           )}
           {numberField(
-            '大盤（0050）最高收盤價（元）',
+            '加權指數歷史最高點',
             settings.blueprintMarketPeak,
             (next) => onUpdateSettings({ blueprintMarketPeak: Math.max(next, 0) }),
-            '手動輸入並在創高後更新；系統會以 0050 最新收盤自動計算回撤',
+            '手動輸入並在創高後更新；系統會以加權指數最新收盤自動計算回撤',
             { step: '0.01', min: 0 },
           )}
           {numberField(
@@ -242,10 +243,8 @@ export function RebalancePanel({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm text-white">
-                    0050 收盤：
-                    {market.benchmarkQuote
-                      ? formatNumber(market.benchmarkQuote.price, 2)
-                      : '—'}
+                    加權指數收盤：
+                    {market.indexQuote ? formatNumber(market.indexQuote.price, 2) : '—'}
                   </p>
                   <p className={`mt-1 text-xs ${pnlClass(market.leveragedDailyGain ?? 0)}`}>
                     今日正二損益：
@@ -271,8 +270,8 @@ export function RebalancePanel({
             </div>
             <p className="text-[11px] text-slate-500">
               {market.message ||
-                (market.benchmarkQuote
-                  ? `${market.benchmarkQuote.date} 收盤；正二損益＝持有股數 × 當日價差`
+                (market.indexQuote
+                  ? `${market.indexQuote.date} 收盤；正二損益＝持有股數 × 當日價差`
                   : '正在取得最新收盤價')}
             </p>
           </div>
@@ -388,7 +387,7 @@ export function RebalancePanel({
       <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
         <h3 className="text-base font-semibold text-white">現階段該做什麼</h3>
         <p className="mt-1 text-sm text-slate-400">
-          依你填寫的生活費、大盤最高點與目前持股，自動排出優先動作。
+          依你填寫的生活費、加權指數最高點與目前持股，自動排出優先動作。
         </p>
         <div className="mt-4 space-y-3">
           {blueprint.actions.map((action) => {
@@ -726,7 +725,7 @@ export function RebalancePanel({
           <section>
             <h4 className="font-semibold text-teal-200">四、動態平衡與波動賺錢</h4>
             <p className="mt-1 text-slate-400">
-              正二上漲時可微量再平衡（獲利約三分之一轉現金）；大盤創高後重設下跌加碼基準。落實「正二
+              正二上漲時可微量再平衡（獲利約三分之一轉現金）；加權指數創高後重設下跌加碼基準。落實「正二
               + 原型 + 三成現金」後，即使短期不看盤，組合也不易因單一波動而失控。
             </p>
           </section>
@@ -752,7 +751,7 @@ export function RebalancePanel({
           {
             label: '下跌加碼',
             formula: '回撤 30%／40%／50% → 依序加碼 5%／5%／5% 淨值',
-            note: '回撤＝（手動設定的 0050 最高收盤 − 最新收盤）÷ 最高收盤；三筆合計 15%',
+            note: '回撤＝（手動設定的加權指數最高點 − 最新收盤）÷ 最高點；三筆合計 15%',
           },
           {
             label: '安全提領（質押）',

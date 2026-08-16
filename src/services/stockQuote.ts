@@ -51,6 +51,15 @@ export const BARS_CACHE_TTL_MS = 10 * 60 * 1000
 /** 風險分析預設的基準指數（元大台灣 50） */
 export const BENCHMARK_SYMBOL = '0050'
 
+/** 台股發行量加權股價指數，FinMind 以 TaiwanStockPrice 的 TAIEX 提供 */
+export const MARKET_INDEX_SYMBOL = 'TAIEX'
+
+/** 指數不在 TaiwanStockInfo 個股清單內，名稱另行對應 */
+const INDEX_NAMES: Record<string, string> = {
+  TAIEX: '加權指數',
+  TPEX: '櫃買指數',
+}
+
 type InfoCache = {
   updatedAt: number
   items: Record<string, StockMeta>
@@ -166,7 +175,8 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote> {
     return cached.quote
   }
 
-  const meta = await lookupStockMeta(key)
+  const indexName = INDEX_NAMES[key]
+  const meta = indexName ? null : await lookupStockMeta(key)
 
   type PriceRow = {
     date: string
@@ -202,7 +212,7 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote> {
 
   const quote: StockQuote = {
     symbol: key,
-    name: meta?.name || key,
+    name: indexName || meta?.name || key,
     price: latest.close,
     open: latest.open,
     high: latest.max,

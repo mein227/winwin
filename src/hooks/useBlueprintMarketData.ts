@@ -3,7 +3,7 @@ import type { Holding } from '../types'
 import type { ExposureResult } from '../utils/exposure'
 import { classifyBlueprintBucket } from '../utils/blueprint'
 import {
-  BENCHMARK_SYMBOL,
+  MARKET_INDEX_SYMBOL,
   fetchStockQuotes,
   type StockQuote,
 } from '../services/stockQuote'
@@ -12,8 +12,8 @@ const AUTO_REFRESH_MS = 15 * 60 * 1000
 const AUTO_CHECK_MS = 60 * 1000
 
 export interface BlueprintMarketData {
-  benchmarkSymbol: string
-  benchmarkQuote: StockQuote | null
+  indexSymbol: string
+  indexQuote: StockQuote | null
   leveragedDailyGain: number | null
   leveragedSymbols: string[]
   loading: boolean
@@ -22,9 +22,9 @@ export interface BlueprintMarketData {
 }
 
 /**
- * 自動取得 0050 與持有正二的最新收盤。
+ * 自動取得台股加權指數與持有正二的最新收盤。
  *
- * 0050 作為大盤代理計算自使用者設定高點的回撤；
+ * 加權指數用來計算自使用者設定高點的回撤；
  * 正二今日損益則以「目前股數 ×（最新收盤 − 前一日收盤）」加總。
  */
 export function useBlueprintMarketData(
@@ -55,7 +55,7 @@ export function useBlueprintMarketData(
     [holdings, leveragedSymbols],
   )
 
-  const [benchmarkQuote, setBenchmarkQuote] = useState<StockQuote | null>(null)
+  const [indexQuote, setIndexQuote] = useState<StockQuote | null>(null)
   const [leveragedDailyGain, setLeveragedDailyGain] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -71,10 +71,10 @@ export function useBlueprintMarketData(
     setLoading(true)
 
     try {
-      const symbols = [BENCHMARK_SYMBOL, ...symbolSignature.split('|').filter(Boolean)]
+      const symbols = [MARKET_INDEX_SYMBOL, ...symbolSignature.split('|').filter(Boolean)]
       const { quotes, errors } = await fetchStockQuotes(symbols)
       const quoteMap = new Map(quotes.map((quote) => [quote.symbol, quote]))
-      setBenchmarkQuote(quoteMap.get(BENCHMARK_SYMBOL) ?? null)
+      setIndexQuote(quoteMap.get(MARKET_INDEX_SYMBOL) ?? null)
 
       const leveraged = symbolSignature.split('|').filter(Boolean)
       if (leveraged.length === 0) {
@@ -96,7 +96,11 @@ export function useBlueprintMarketData(
 
       setMessage(
         errors.length > 0
-          ? `${errors.map((error) => error.symbol).join('、')} 收盤價更新失敗`
+          ? `${errors
+              .map((error) =>
+                error.symbol === MARKET_INDEX_SYMBOL ? '加權指數' : error.symbol,
+              )
+              .join('、')} 收盤價更新失敗`
           : '',
       )
     } catch (error) {
@@ -134,8 +138,8 @@ export function useBlueprintMarketData(
   }, [load])
 
   return {
-    benchmarkSymbol: BENCHMARK_SYMBOL,
-    benchmarkQuote,
+    indexSymbol: MARKET_INDEX_SYMBOL,
+    indexQuote,
     leveragedDailyGain,
     leveragedSymbols,
     loading,
