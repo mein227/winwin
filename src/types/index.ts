@@ -117,14 +117,12 @@ export interface AllocationSettings {
   blueprintAnnualLivingExpense: number
   /** 金融資產歷史最高點（元），用於 4% 質押提領上限 */
   blueprintPeakNetWorth: number
-  /** 大盤自高點下跌幅度 %（用於下跌加碼提醒） */
-  blueprintMarketDrawdown: number
+  /** 大盤代理 0050 的最高收盤價（元），用於自動計算下跌加碼門檻 */
+  blueprintMarketPeak: number
   /** 退休期偏好配置 */
   blueprintRetirementPreset: BlueprintRetirementPreset
   /** 每年質押提領上限佔歷史最高點的比例 %（預設 4） */
   blueprintWithdrawalRate: number
-  /** 今日正二獲利金額（元），用於微量動態再平衡試算；0 表示未填 */
-  blueprintTodayLeveragedGain: number
 }
 
 export interface ExposureItem {

@@ -191,8 +191,13 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote> {
 
   const latest = rows[rows.length - 1]
   const prev = rows.length > 1 ? rows[rows.length - 2] : null
-  const previousClose = prev?.close ?? latest.close - (latest.spread || 0)
-  const change = latest.close - previousClose
+  // 交易所 spread 是相對當日參考價的正式漲跌，可正確處理除權息與分割。
+  // 直接拿前一日未調整收盤相減，會在公司行動日製造巨額假損益。
+  const hasSpread = Number.isFinite(latest.spread)
+  const previousClose = hasSpread
+    ? latest.close - latest.spread
+    : (prev?.close ?? latest.close)
+  const change = hasSpread ? latest.spread : latest.close - previousClose
   const changePercent = previousClose ? (change / previousClose) * 100 : 0
 
   const quote: StockQuote = {

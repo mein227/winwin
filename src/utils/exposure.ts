@@ -29,10 +29,9 @@ export const defaultAllocationSettings: AllocationSettings = {
   historyDays: 365,
   blueprintAnnualLivingExpense: 0,
   blueprintPeakNetWorth: 0,
-  blueprintMarketDrawdown: 0,
+  blueprintMarketPeak: 0,
   blueprintRetirementPreset: '333',
   blueprintWithdrawalRate: 4,
-  blueprintTodayLeveragedGain: 0,
 }
 
 const ASSET_CLASS_LABELS: Record<AssetClass, string> = {

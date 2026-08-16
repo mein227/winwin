@@ -14,7 +14,9 @@ import {
   CheckCircle2,
   Info,
   Landmark,
+  LoaderCircle,
   Map,
+  RefreshCw,
   Shield,
   Sparkles,
   Target,
@@ -25,6 +27,7 @@ import type {
   AllocationSettings,
   AssetSetting,
   BlueprintRetirementPreset,
+  Holding,
   RebalancePlan,
   SellReason,
 } from '../types'
@@ -36,10 +39,12 @@ import {
 } from '../utils/blueprint'
 import { formatCurrency, formatNumber, formatPercent, pnlClass } from '../utils/calculations'
 import { tooltipStyle } from '../utils/chartColors'
+import { useBlueprintMarketData } from '../hooks/useBlueprintMarketData'
 import { FormulaCard } from './FormulaCard'
 
 interface RebalancePanelProps {
   plan: RebalancePlan
+  holdings: Holding[]
   exposure: ExposureResult
   assetSettings: AssetSetting[]
   settings: AllocationSettings
@@ -83,6 +88,7 @@ const retirementOptions: {
 
 export function RebalancePanel({
   plan,
+  holdings,
   exposure,
   assetSettings,
   settings,
@@ -90,9 +96,16 @@ export function RebalancePanel({
   onApplyTargetWeights,
   onUpdateSettings,
 }: RebalancePanelProps) {
+  const market = useBlueprintMarketData(holdings, exposure)
   const blueprint = useMemo(
-    () => analyzeBlueprint(exposure, settings),
-    [exposure, settings],
+    () =>
+      analyzeBlueprint(exposure, settings, {
+        benchmarkSymbol: market.benchmarkSymbol,
+        benchmarkClose: market.benchmarkQuote?.price ?? null,
+        benchmarkDate: market.benchmarkQuote?.date ?? '',
+        leveragedDailyGain: market.leveragedDailyGain,
+      }),
+    [exposure, market, settings],
   )
 
   const stockRows = plan.rows.filter((row) => !row.isCash)
@@ -207,11 +220,11 @@ export function RebalancePanel({
             '退休提領上限以此計算；可先填目前淨值，之後再更新真正高點',
           )}
           {numberField(
-            '大盤自高點下跌（%）',
-            settings.blueprintMarketDrawdown,
-            (next) => onUpdateSettings({ blueprintMarketDrawdown: Math.min(Math.max(next, 0), 90) }),
-            '達 30% 時啟動下跌加碼；創高後請重設為 0',
-            { step: '0.1', min: 0, max: 90 },
+            '大盤（0050）最高收盤價（元）',
+            settings.blueprintMarketPeak,
+            (next) => onUpdateSettings({ blueprintMarketPeak: Math.max(next, 0) }),
+            '手動輸入並在創高後更新；系統會以 0050 最新收盤自動計算回撤',
+            { step: '0.01', min: 0 },
           )}
           {numberField(
             '每年安全提領上限（%）',
@@ -223,12 +236,46 @@ export function RebalancePanel({
             '預設 4%；保守者可設 2%',
             { step: '0.5', min: 0, max: 10 },
           )}
-          {numberField(
-            '今日正二獲利（元）',
-            settings.blueprintTodayLeveragedGain,
-            (next) => onUpdateSettings({ blueprintTodayLeveragedGain: Math.max(next, 0) }),
-            '用於微量動態再平衡：建議賣出約三分之一補現金',
-          )}
+          <div className="space-y-1.5">
+            <span className="text-xs text-slate-400">自動行情</span>
+            <div className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm text-white">
+                    0050 收盤：
+                    {market.benchmarkQuote
+                      ? formatNumber(market.benchmarkQuote.price, 2)
+                      : '—'}
+                  </p>
+                  <p className={`mt-1 text-xs ${pnlClass(market.leveragedDailyGain ?? 0)}`}>
+                    今日正二損益：
+                    {market.leveragedDailyGain == null
+                      ? '—'
+                      : formatCurrency(market.leveragedDailyGain)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={market.refresh}
+                  disabled={market.loading}
+                  title="更新最新收盤價"
+                  className="rounded-lg border border-slate-700 p-2 text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
+                >
+                  {market.loading ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-500">
+              {market.message ||
+                (market.benchmarkQuote
+                  ? `${market.benchmarkQuote.date} 收盤；正二損益＝持有股數 × 當日價差`
+                  : '正在取得最新收盤價')}
+            </p>
+          </div>
           <div className="space-y-1.5">
             <span className="text-xs text-slate-400">退休期偏好配置</span>
             <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-950 p-1">
@@ -341,7 +388,7 @@ export function RebalancePanel({
       <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
         <h3 className="text-base font-semibold text-white">現階段該做什麼</h3>
         <p className="mt-1 text-sm text-slate-400">
-          依你填寫的生活費、下跌幅度與目前持股，自動排出優先動作。
+          依你填寫的生活費、大盤最高點與目前持股，自動排出優先動作。
         </p>
         <div className="mt-4 space-y-3">
           {blueprint.actions.map((action) => {
@@ -376,12 +423,27 @@ export function RebalancePanel({
             <p className="text-sm font-semibold text-white">下跌加碼</p>
           </div>
           <p className="mt-2 text-xs text-slate-300">{blueprint.dipBuy.note}</p>
-          {blueprint.dipBuy.eligible && (
-            <p className="mt-3 text-sm text-rose-100">
-              建議每筆約 {formatCurrency(blueprint.dipBuy.trancheAmount)}（淨值{' '}
-              {blueprint.dipBuy.tranchePercent}%），最多 {blueprint.dipBuy.maxTranches} 筆
+          <div className="mt-3 space-y-1 text-xs text-slate-400">
+            <p>
+              最高 {blueprint.dipBuy.marketPeak > 0
+                ? formatNumber(blueprint.dipBuy.marketPeak, 2)
+                : '—'} · 最新 {blueprint.dipBuy.marketClose != null
+                ? formatNumber(blueprint.dipBuy.marketClose, 2)
+                : '—'} · 回撤 {formatNumber(blueprint.dipBuy.drawdown, 1)}%
             </p>
-          )}
+            <p>
+              30%／40%／50% 各加碼一次，每筆約{' '}
+              {formatCurrency(blueprint.dipBuy.trancheAmount)}（淨值 5%）
+            </p>
+            <p>
+              已達 {blueprint.dipBuy.triggeredTranches}/3 筆門檻
+              {blueprint.dipBuy.nextTrigger != null
+                ? ` · 下一筆：回撤 ${blueprint.dipBuy.nextTrigger}%`
+                : blueprint.dipBuy.triggeredTranches === 3
+                  ? ' · 三筆門檻皆已達'
+                  : ''}
+            </p>
+          </div>
         </div>
 
         <div
@@ -641,7 +703,8 @@ export function RebalancePanel({
             <h4 className="font-semibold text-teal-200">一、保留三成現金的防禦機制</h4>
             <p className="mt-1 text-slate-400">
               累積資產時至少保留三成現金（或「兩成原型 ETF + 兩成現金」等效）。市場自高點下跌
-              30% 時，這筆現金就是加碼金，可分批（例如每次 5%，共三筆 15%）在低點打入。
+              30% 時投入第一筆 5%；若再跌至 40% 投入第二筆 5%，跌至 50% 投入第三筆 5%，
+              三筆合計為淨值的 15%。
             </p>
           </section>
           <section>
@@ -688,8 +751,8 @@ export function RebalancePanel({
           },
           {
             label: '下跌加碼',
-            formula: '自高點跌幅 ≥ 30% → 每次動用約 5% 淨值，最多三筆',
-            note: '加碼金來自預留現金，用完後仍須保留基本防禦水位',
+            formula: '回撤 30%／40%／50% → 依序加碼 5%／5%／5% 淨值',
+            note: '回撤＝（手動設定的 0050 最高收盤 − 最新收盤）÷ 最高收盤；三筆合計 15%',
           },
           {
             label: '安全提領（質押）',
@@ -698,8 +761,8 @@ export function RebalancePanel({
           },
           {
             label: '微量動態再平衡',
-            formula: '轉回現金 ≈ 當日正二獲利 ÷ 3',
-            note: '用來維持三成現金，而不是等到大幅偏離才一次調整',
+            formula: '今日正二損益 = Σ 持有股數 ×（最新收盤 − 前一日收盤）',
+            note: '正數時建議約三分之一轉回現金；收盤價每日自動更新',
           },
           {
             label: '執行層觸發',
