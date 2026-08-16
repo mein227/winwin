@@ -51,6 +51,15 @@ export const BARS_CACHE_TTL_MS = 10 * 60 * 1000
 /** 風險分析預設的基準指數（元大台灣 50） */
 export const BENCHMARK_SYMBOL = '0050'
 
+/** 台股發行量加權股價指數，FinMind 以 TaiwanStockPrice 的 TAIEX 提供 */
+export const MARKET_INDEX_SYMBOL = 'TAIEX'
+
+/** 指數不在 TaiwanStockInfo 個股清單內，名稱另行對應 */
+const INDEX_NAMES: Record<string, string> = {
+  TAIEX: '加權指數',
+  TPEX: '櫃買指數',
+}
+
 type InfoCache = {
   updatedAt: number
   items: Record<string, StockMeta>
@@ -166,7 +175,8 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote> {
     return cached.quote
   }
 
-  const meta = await lookupStockMeta(key)
+  const indexName = INDEX_NAMES[key]
+  const meta = indexName ? null : await lookupStockMeta(key)
 
   type PriceRow = {
     date: string
@@ -191,13 +201,18 @@ export async function fetchStockQuote(symbol: string): Promise<StockQuote> {
 
   const latest = rows[rows.length - 1]
   const prev = rows.length > 1 ? rows[rows.length - 2] : null
-  const previousClose = prev?.close ?? latest.close - (latest.spread || 0)
-  const change = latest.close - previousClose
+  // 交易所 spread 是相對當日參考價的正式漲跌，可正確處理除權息與分割。
+  // 直接拿前一日未調整收盤相減，會在公司行動日製造巨額假損益。
+  const hasSpread = Number.isFinite(latest.spread)
+  const previousClose = hasSpread
+    ? latest.close - latest.spread
+    : (prev?.close ?? latest.close)
+  const change = hasSpread ? latest.spread : latest.close - previousClose
   const changePercent = previousClose ? (change / previousClose) * 100 : 0
 
   const quote: StockQuote = {
     symbol: key,
-    name: meta?.name || key,
+    name: indexName || meta?.name || key,
     price: latest.close,
     open: latest.open,
     high: latest.max,

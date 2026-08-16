@@ -44,6 +44,15 @@ export interface BlueprintWeights {
   cash: number
 }
 
+export interface BlueprintMarketSnapshot {
+  /** 大盤代號，目前為台股加權指數 TAIEX */
+  indexSymbol: string
+  indexName: string
+  indexClose: number | null
+  indexDate: string
+  leveragedDailyGain: number | null
+}
+
 export interface BlueprintAnalysis {
   stage: BlueprintStage
   stageLabel: string
@@ -55,10 +64,16 @@ export interface BlueprintAnalysis {
   actions: BlueprintAction[]
   dipBuy: {
     eligible: boolean
+    marketPeak: number
+    marketClose: number | null
+    marketDate: string
     drawdown: number
     tranchePercent: number
     trancheAmount: number
     maxTranches: number
+    triggeredTranches: number
+    cumulativePercent: number
+    nextTrigger: number | null
     note: string
   }
   retirement: {
@@ -70,7 +85,7 @@ export interface BlueprintAnalysis {
     note: string
   }
   microRebalance: {
-    todayGain: number
+    todayGain: number | null
     trimAmount: number
     note: string
   }
@@ -235,11 +250,13 @@ const CASH_DEFENSE = 30
 const DIP_TRIGGER = 30
 const DIP_TRANCHE = 5
 const DIP_MAX_TRANCHES = 3
+const DIP_THRESHOLDS = [30, 40, 50] as const
 const WEIGHT_TOLERANCE = 3
 
 export function analyzeBlueprint(
   exposure: ExposureResult,
   settings: AllocationSettings,
+  market: BlueprintMarketSnapshot,
 ): BlueprintAnalysis {
   const netWorth = Math.max(exposure.summary.netWorth, 0)
   const living = Math.max(Number(settings.blueprintAnnualLivingExpense) || 0, 0)
@@ -253,8 +270,16 @@ export function analyzeBlueprint(
     other: current.other,
   }
 
-  const drawdown = Math.max(Number(settings.blueprintMarketDrawdown) || 0, 0)
-  const dipEligible = drawdown >= DIP_TRIGGER && current.cash > 0
+  const marketPeak = Math.max(Number(settings.blueprintMarketPeak) || 0, 0)
+  const marketClose =
+    market.indexClose != null && market.indexClose > 0 ? market.indexClose : null
+  const drawdown =
+    marketPeak > 0 && marketClose != null
+      ? Math.max(((marketPeak - marketClose) / marketPeak) * 100, 0)
+      : 0
+  const triggeredTranches =
+    DIP_THRESHOLDS.filter((threshold) => drawdown + 1e-9 >= threshold).length
+  const dipEligible = triggeredTranches > 0
   const trancheAmount = (DIP_TRANCHE / 100) * netWorth
   const peak =
     Math.max(Number(settings.blueprintPeakNetWorth) || 0, 0) ||
@@ -264,8 +289,8 @@ export function analyzeBlueprint(
     10,
   )
   const maxAnnual = (withdrawalRate / 100) * peak
-  const todayGain = Math.max(Number(settings.blueprintTodayLeveragedGain) || 0, 0)
-  const trimAmount = todayGain > 0 ? todayGain / 3 : 0
+  const todayGain = market.leveragedDailyGain
+  const trimAmount = todayGain != null && todayGain > 0 ? todayGain / 3 : 0
 
   const actions = buildActions({
     stage,
@@ -274,7 +299,10 @@ export function analyzeBlueprint(
     current,
     gaps,
     dipEligible,
+    marketPeak,
+    marketClose,
     drawdown,
+    triggeredTranches,
     trancheAmount,
     maxAnnual,
     peak,
@@ -306,13 +334,29 @@ export function analyzeBlueprint(
     actions,
     dipBuy: {
       eligible: dipEligible,
+      marketPeak,
+      marketClose,
+      marketDate: market.indexDate,
       drawdown,
       tranchePercent: DIP_TRANCHE,
       trancheAmount,
       maxTranches: DIP_MAX_TRANCHES,
-      note: dipEligible
-        ? `大盤自高點已跌 ${formatPct(drawdown)}，可用預留現金分批加碼（每次約 ${DIP_TRANCHE}% 淨值）`
-        : `當大盤自高點下跌達 ${DIP_TRIGGER}% 時，三成現金才啟動「下跌加碼」；請在上方更新下跌幅度`,
+      triggeredTranches,
+      cumulativePercent: triggeredTranches * DIP_TRANCHE,
+      nextTrigger:
+        triggeredTranches >= DIP_MAX_TRANCHES
+          ? null
+          : DIP_THRESHOLDS[triggeredTranches],
+      note:
+        marketPeak <= 0
+          ? `請先填寫${market.indexName}的歷史最高點`
+          : marketClose == null
+            ? `正在取得${market.indexName}最新收盤，暫時無法計算回撤`
+            : marketClose > marketPeak
+              ? `最新收盤 ${marketClose.toFixed(2)} 已高於設定高點，請把最高點更新為新高`
+            : dipEligible
+              ? `目前回撤 ${formatPct(drawdown)}，已達第 ${triggeredTranches} 筆加碼門檻（累計可投入淨值 ${triggeredTranches * DIP_TRANCHE}%）`
+              : `目前回撤 ${formatPct(drawdown)}；跌至 30% 啟動第 1 筆，40% 第 2 筆，50% 第 3 筆`,
     },
     retirement: {
       eligible: stage === 'retire',
@@ -331,9 +375,11 @@ export function analyzeBlueprint(
       todayGain,
       trimAmount,
       note:
-        todayGain > 0
+        todayGain == null
+          ? '尚無正二持股或收盤行情，暫時無法計算今日正二損益'
+          : todayGain > 0
           ? `今日正二約賺 ${formatMoney(todayGain)}，可賣出約三分之一（${formatMoney(trimAmount)}）補回現金`
-          : '正二上漲獲利時，可把當日獲利的約三分之一賣出補現金（微量動態再平衡）',
+          : `今日正二損益為 ${formatMoney(todayGain)}，未產生獲利，不需執行微量停利`,
     },
   }
 }
@@ -345,14 +391,17 @@ function buildActions(input: {
   current: BlueprintWeights
   gaps: BlueprintAnalysis['gaps']
   dipEligible: boolean
+  marketPeak: number
+  marketClose: number | null
   drawdown: number
+  triggeredTranches: number
   trancheAmount: number
   maxAnnual: number
   peak: number
   withdrawalRate: number
   netWorth: number
   trimAmount: number
-  todayGain: number
+  todayGain: number | null
 }): BlueprintAction[] {
   const actions: BlueprintAction[] = []
   const { targets, current, gaps } = input
@@ -430,12 +479,33 @@ function buildActions(input: {
     })
   }
 
-  if (input.dipEligible) {
+  if (input.marketPeak <= 0) {
+    actions.push({
+      id: 'need-market-peak',
+      severity: 'warn',
+      title: '請填寫加權指數歷史最高點',
+      detail: '系統會用加權指數最新收盤與此高點自動計算回撤，並在 30%、40%、50% 依序觸發三筆加碼。',
+    })
+  } else if (input.marketClose == null) {
+    actions.push({
+      id: 'market-loading',
+      severity: 'info',
+      title: '正在取得加權指數最新收盤',
+      detail: '行情更新完成後，系統會自動計算自高點回撤，不需要再手動輸入下跌百分比。',
+    })
+  } else if (input.marketClose > input.marketPeak) {
+    actions.push({
+      id: 'update-market-peak',
+      severity: 'warn',
+      title: '加權指數已創新高，請更新最高點',
+      detail: `加權指數最新收盤 ${input.marketClose.toFixed(2)} 已高於設定的 ${input.marketPeak.toFixed(2)}；更新高點後，30%／40%／50% 加碼基準才會正確。`,
+    })
+  } else if (input.dipEligible) {
     actions.push({
       id: 'dip-buy',
       severity: 'urgent',
-      title: `下跌加碼啟動（已跌 ${formatPct(input.drawdown)}）`,
-      detail: `可用預留現金分批打入，建議每筆約淨值的 ${DIP_TRANCHE}%（約 ${formatMoney(input.trancheAmount)}），最多 ${DIP_MAX_TRANCHES} 筆共 ${DIP_TRANCHE * DIP_MAX_TRANCHES}%。加碼後仍須保留部分現金，不能把防禦金一次用完。`,
+      title: `第 ${input.triggeredTranches} 筆下跌加碼門檻已達成`,
+      detail: `目前自高點下跌 ${formatPct(input.drawdown)}；30%、40%、50% 各投入淨值 ${DIP_TRANCHE}%（每筆約 ${formatMoney(input.trancheAmount)}）。目前累計門檻為 ${input.triggeredTranches} 筆、共 ${input.triggeredTranches * DIP_TRANCHE}%。`,
     })
   } else if (input.drawdown > 0 && input.drawdown < DIP_TRIGGER) {
     actions.push({
@@ -446,7 +516,7 @@ function buildActions(input: {
     })
   }
 
-  if (input.todayGain > 0 && input.trimAmount > 0) {
+  if (input.todayGain != null && input.todayGain > 0 && input.trimAmount > 0) {
     actions.push({
       id: 'micro-rebalance',
       severity: 'info',
