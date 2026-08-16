@@ -29,14 +29,18 @@ interface AllocationProps {
   onResetAssetOverride: (symbol: string) => void
   onSetTargetWeight: (symbol: string, weight?: number) => void
   onApplyTargetWeights: (weights: Record<string, number>) => void
-  onClearTargetWeights: () => void
   onUpdateSettings: (patch: Partial<AllocationSettings>) => void
 }
 
 const views: { id: AllocationView; label: string; icon: typeof PieChart; hint: string }[] = [
   { id: 'overview', label: '配置總覽', icon: PieChart, hint: '股票與現金的實際配置比重' },
   { id: 'exposure', label: '曝險與槓桿', icon: Gauge, hint: '正 2 等槓桿標的的真實曝險' },
-  { id: 'rebalance', label: '資產再平衡', icon: Scale, hint: '目標權重與買賣建議' },
+  {
+    id: 'rebalance',
+    label: '資產配置藍圖',
+    icon: Scale,
+    hint: '正二與現金共生：依生活費倍數給出階段配置與動作提醒',
+  },
   { id: 'risk', label: '報酬風險', icon: Activity, hint: '波動度、夏普值與風險貢獻' },
 ]
 
@@ -51,7 +55,6 @@ export function Allocation({
   onResetAssetOverride,
   onSetTargetWeight,
   onApplyTargetWeights,
-  onClearTargetWeights,
   onUpdateSettings,
 }: AllocationProps) {
   const [view, setView] = useState<AllocationView>('overview')
@@ -120,10 +123,8 @@ export function Allocation({
           exposure={exposure}
           assetSettings={assetSettings}
           settings={settings}
-          risk={risk}
           onSetTargetWeight={onSetTargetWeight}
           onApplyTargetWeights={onApplyTargetWeights}
-          onClearTargetWeights={onClearTargetWeights}
           onUpdateSettings={onUpdateSettings}
         />
       )}

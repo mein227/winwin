@@ -71,7 +71,6 @@ export default function App() {
           onResetAssetOverride={portfolio.resetAssetOverride}
           onSetTargetWeight={portfolio.setTargetWeight}
           onApplyTargetWeights={portfolio.applyTargetWeights}
-          onClearTargetWeights={portfolio.clearTargetWeights}
           onUpdateSettings={portfolio.updateSettings}
         />
       )}

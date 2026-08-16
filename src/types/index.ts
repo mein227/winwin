@@ -92,6 +92,9 @@ export type RebalanceBasis = 'value' | 'exposure'
  */
 export type SellPriority = 'profit' | 'deviation'
 
+/** 退休期推薦配置：333＝各三分之一；433＝三成正二、四成原型、三成現金 */
+export type BlueprintRetirementPreset = '333' | '433'
+
 export interface AllocationSettings {
   /** 現金目標權重 % */
   cashTargetWeight: number
@@ -110,6 +113,18 @@ export interface AllocationSettings {
   maxExposureRatio: number
   /** 風險分析的歷史天數 */
   historyDays: number
+  /** 年生活費（元），用於判定資產階段 */
+  blueprintAnnualLivingExpense: number
+  /** 金融資產歷史最高點（元），用於 4% 質押提領上限 */
+  blueprintPeakNetWorth: number
+  /** 大盤自高點下跌幅度 %（用於下跌加碼提醒） */
+  blueprintMarketDrawdown: number
+  /** 退休期偏好配置 */
+  blueprintRetirementPreset: BlueprintRetirementPreset
+  /** 每年質押提領上限佔歷史最高點的比例 %（預設 4） */
+  blueprintWithdrawalRate: number
+  /** 今日正二獲利金額（元），用於微量動態再平衡試算；0 表示未填 */
+  blueprintTodayLeveragedGain: number
 }
 
 export interface ExposureItem {

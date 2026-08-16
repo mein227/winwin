@@ -43,7 +43,7 @@ export function Layout({ activeTab, onTabChange, children }: LayoutProps) {
                 WinWin
               </h1>
               <p className="text-xs text-slate-400">
-                個股進出・現金・曝險槓桿・再平衡・報酬風險
+                個股進出・現金・曝險槓桿・配置藍圖・報酬風險
               </p>
             </div>
           </div>
