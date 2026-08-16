@@ -402,7 +402,7 @@ export function RiskPanel({
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
               <h3 className="text-base font-semibold text-white">風險平價建議權重</h3>
               <p className="mt-1 text-xs text-slate-500">
-                以「權重與波動度成反比」配置，讓每檔標的貢獻相近的風險；可到「資產再平衡」頁一鍵套用。
+                以「權重與波動度成反比」配置，讓每檔標的貢獻相近的風險；配置比例也可到「資產配置藍圖」依生活費倍數套用。
                 此方法只看波動不看報酬，債券等低波動標的權重會偏高，請搭配自己的預期報酬調整
               </p>
               <div className="mt-4 space-y-3">
