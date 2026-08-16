@@ -105,11 +105,13 @@ export function useBlueprintMarketData(
       runningRef.current = false
       setLoading(false)
     }
-  }, [leveragedHoldingSignature, symbolSignature])
+  }, [symbolSignature])
 
   useEffect(() => {
+    // 股數異動時也要用同一批收盤價重算正二單日損益。
+    void leveragedHoldingSignature
     void load()
-  }, [load])
+  }, [leveragedHoldingSignature, load])
 
   useEffect(() => {
     const maybeRefresh = () => {
