@@ -26,7 +26,6 @@ export default function App() {
         <Dashboard
           exposure={portfolio.exposure.summary}
           holdings={portfolio.holdings}
-          transactions={portfolio.transactions}
           pnl={pnl}
           onExport={portfolio.exportPortfolio}
           onImport={portfolio.importPortfolio}

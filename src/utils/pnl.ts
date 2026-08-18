@@ -222,6 +222,43 @@ export function buildDailyPnlSeries(
   }
 }
 
+/** 資產淨值走勢的單一交易日 */
+export interface EquityPoint {
+  date: string
+  /** 估算淨值＝當日收盤市值＋回推的淨現金 */
+  value: number
+  marketValue: number
+  /** 回推的淨現金（含現金帳戶與負債） */
+  cash: number
+}
+
+/**
+ * 由每日損益序列組出資產淨值走勢。
+ *
+ * 現金帳戶沒有歷史紀錄，因此以目前總淨值為錨點往回推：
+ * 每往前一個交易日，就把該日的淨投入加回現金，
+ * 淨值＝當日收盤市值＋回推的淨現金，最後一點會等於總覽的總淨值。
+ */
+export function buildEquityCurve(days: DailyPnL[], netWorth: number): EquityPoint[] {
+  if (days.length === 0) return []
+
+  let cash = netWorth - days[days.length - 1].marketValue
+  const points: EquityPoint[] = []
+
+  for (let i = days.length - 1; i >= 0; i--) {
+    const day = days[i]
+    points.push({
+      date: day.date,
+      value: day.marketValue + cash,
+      marketValue: day.marketValue,
+      cash,
+    })
+    cash += day.netCashFlow
+  }
+
+  return points.reverse()
+}
+
 export interface SummaryOptions {
   key: string
   label: string
