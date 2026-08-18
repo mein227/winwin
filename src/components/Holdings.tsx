@@ -7,8 +7,7 @@ import {
   formatPercent,
   pnlClass,
 } from '../utils/calculations'
-import { fetchStockQuotes } from '../services/stockQuote'
-import { StockExternalLinks } from './StockExternalLinks'
+import { fetchStockQuotes, getWantgooUrl } from '../services/stockQuote'
 
 interface HoldingsProps {
   holdings: Holding[]
@@ -192,7 +191,7 @@ export function Holdings({ holdings, onUpdatePrice, onUpdatePrices }: HoldingsPr
         <div>
           <h2 className="text-2xl font-bold text-white">持股明細</h2>
           <p className="mt-1 text-sm text-slate-400">
-            可一鍵抓取最新收盤價，或點現價手動修改；也可連到 Goodinfo／玩股網查看詳細資訊
+            可一鍵抓取最新收盤價，或點現價手動修改；點股票代碼可連到玩股網查看詳細資訊
           </p>
         </div>
         <button
@@ -276,9 +275,16 @@ export function Holdings({ holdings, onUpdatePrice, onUpdatePrices }: HoldingsPr
                       className="group border-b border-slate-800/70 last:border-0 hover:bg-slate-800/40"
                     >
                       <td className={`px-4 py-3 ${STICKY_SYMBOL_TD}`}>
-                        <div className="font-medium text-white">{h.symbol}</div>
+                        <a
+                          href={getWantgooUrl(h.symbol)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-teal-300 hover:text-teal-200 hover:underline"
+                          title={`在玩股網開啟 ${h.symbol}`}
+                        >
+                          {h.symbol}
+                        </a>
                         <div className="text-xs text-slate-500">{h.name}</div>
-                        <StockExternalLinks symbol={h.symbol} />
                       </td>
                       <td className="px-4 py-3 text-right text-slate-200">
                         {formatNumber(h.shares, 0)}
@@ -363,9 +369,16 @@ export function Holdings({ holdings, onUpdatePrice, onUpdatePrices }: HoldingsPr
               >
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <p className="font-medium text-white">{h.symbol}</p>
+                    <a
+                      href={getWantgooUrl(h.symbol)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-teal-300 hover:text-teal-200 hover:underline"
+                      title={`在玩股網開啟 ${h.symbol}`}
+                    >
+                      {h.symbol}
+                    </a>
                     <p className="text-xs text-slate-500">{h.name}</p>
-                    <StockExternalLinks symbol={h.symbol} />
                   </div>
                   <p className={`font-semibold ${pnlClass(h.realizedPnL)}`}>
                     {formatCurrency(h.realizedPnL)}
