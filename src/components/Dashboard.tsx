@@ -9,19 +9,16 @@ import {
 } from 'lucide-react'
 import {
   Area,
-  AreaChart,
   CartesianGrid,
+  ComposedChart,
+  Line,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
 import { format, parseISO } from 'date-fns'
-import type {
-  ExposureSummary,
-  Holding,
-  Transaction,
-} from '../types'
+import type { ExposureSummary, Holding } from '../types'
 import {
   formatCompact,
   formatCurrency,
@@ -30,6 +27,7 @@ import {
   pnlClass,
 } from '../utils/calculations'
 import { fetchStockQuotes } from '../services/stockQuote'
+import { buildEquityCurve } from '../utils/pnl'
 import type { PnlCalendarState } from '../hooks/usePnlCalendar'
 import { StatCard } from './StatCard'
 import { StockExternalLinks } from './StockExternalLinks'
@@ -38,7 +36,6 @@ import { PnlPanel } from './PnlPanel'
 interface DashboardProps {
   exposure: ExposureSummary
   holdings: Holding[]
-  transactions: Transaction[]
   pnl: PnlCalendarState
   onExport: () => string
   onImport: (json: string) => void
@@ -49,7 +46,6 @@ interface DashboardProps {
 export function Dashboard({
   exposure,
   holdings,
-  transactions,
   pnl,
   onExport,
   onImport,
@@ -59,57 +55,24 @@ export function Dashboard({
   const [message, setMessage] = useState('')
   const [refreshing, setRefreshing] = useState(false)
 
-  const equityCurve = useMemo(() => {
-    const sorted = [...transactions].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-    )
+  // 用每日收盤價算出的損益序列畫淨值，市價變動當天就會反映在曲線上
+  const equityCurve = useMemo(
+    () => buildEquityCurve(pnl.series?.days ?? [], exposure.netWorth),
+    [pnl.series, exposure.netWorth],
+  )
 
-    // 依時間累積現金流，並以最新市價估算當時持股市值
-    let cash = 0
-    let costBasis = 0
-    const shareMap = new Map<string, { shares: number; cost: number }>()
-    const curve: { date: string; label: string; value: number; invested: number }[] = []
-
-    for (const tx of sorted) {
-      const symbol = tx.symbol.toUpperCase()
-      const entry = shareMap.get(symbol) ?? { shares: 0, cost: 0 }
-
-      if (tx.type === 'buy') {
-        const cost = tx.price * tx.shares + tx.fee
-        cash -= cost
-        entry.cost += cost
-        entry.shares += tx.shares
-        costBasis += cost
-      } else {
-        const proceeds = tx.price * tx.shares - tx.fee - tx.tax
-        cash += proceeds
-        if (entry.shares > 0) {
-          const avg = entry.cost / entry.shares
-          const sold = Math.min(tx.shares, entry.shares)
-          entry.cost -= avg * sold
-          entry.shares -= sold
-          costBasis -= avg * sold
-        }
-      }
-      shareMap.set(symbol, entry)
-
-      let mv = 0
-      for (const [sym, pos] of shareMap) {
-        const holding = holdings.find((h) => h.symbol === sym)
-        const price = holding?.currentPrice ?? (pos.shares > 0 ? pos.cost / pos.shares : 0)
-        mv += pos.shares * price
-      }
-
-      curve.push({
-        date: tx.date,
-        label: format(parseISO(tx.date), 'MM/dd'),
-        value: cash + mv,
-        invested: costBasis,
-      })
+  const equityChange = useMemo(() => {
+    if (equityCurve.length < 2) return null
+    const first = equityCurve[0]
+    const last = equityCurve[equityCurve.length - 1]
+    const diff = last.value - first.value
+    return {
+      diff,
+      percent: first.value !== 0 ? (diff / Math.abs(first.value)) * 100 : 0,
+      startDate: first.date,
+      endDate: last.date,
     }
-
-    return curve.length > 0 ? curve : [{ date: '', label: '-', value: 0, invested: 0 }]
-  }, [transactions, holdings])
+  }, [equityCurve])
 
   const topHoldings = holdings.filter((h) => h.shares > 0).slice(0, 5)
 
@@ -286,41 +249,91 @@ export function Dashboard({
 
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 lg:col-span-3">
-          <h3 className="mb-4 text-base font-semibold text-white">資產淨值走勢（估算）</h3>
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h3 className="text-base font-semibold text-white">資產淨值走勢（估算）</h3>
+              <p className="mt-1 text-xs text-slate-500">
+                以每日收盤價逐日估算，最後一點等於目前總淨值
+              </p>
+            </div>
+            {equityChange && (
+              <div className="text-right">
+                <p className={`text-sm font-semibold ${pnlClass(equityChange.diff)}`}>
+                  {formatCurrency(equityChange.diff)}（{formatPercent(equityChange.percent)}）
+                </p>
+                <p className="text-xs text-slate-500">
+                  {equityChange.startDate} ~ {equityChange.endDate}
+                </p>
+              </div>
+            )}
+          </div>
           <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={equityCurve}>
-                <defs>
-                  <linearGradient id="equityFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#14b8a6" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="#14b8a6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="label" stroke="#64748b" fontSize={12} />
-                <YAxis
-                  stroke="#64748b"
-                  fontSize={12}
-                  tickFormatter={(v) => formatCompact(v as number)}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: '#0f172a',
-                    border: '1px solid #334155',
-                    borderRadius: 12,
-                  }}
-                  labelStyle={{ color: '#94a3b8' }}
-                  formatter={(value) => [formatCurrency(Number(value ?? 0)), '淨值']}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#2dd4bf"
-                  strokeWidth={2}
-                  fill="url(#equityFill)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {equityCurve.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-center text-sm text-slate-500">
+                {pnl.loading
+                  ? '正在取得歷史股價並計算淨值走勢…'
+                  : '尚無資料，請先到「進出紀錄」新增買進或賣出'}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={equityCurve}>
+                  <defs>
+                    <linearGradient id="equityFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#14b8a6" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="#14b8a6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#64748b"
+                    fontSize={12}
+                    minTickGap={32}
+                    tickFormatter={(v) => String(v).slice(5).replace('-', '/')}
+                  />
+                  <YAxis
+                    stroke="#64748b"
+                    fontSize={12}
+                    width={64}
+                    // 淨值多半只在小區間內波動，固定從 0 起算會讓曲線看起來是一條直線
+                    domain={['auto', 'auto']}
+                    tickFormatter={(v) => formatCompact(v as number)}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: '#0f172a',
+                      border: '1px solid #334155',
+                      borderRadius: 12,
+                    }}
+                    labelStyle={{ color: '#94a3b8' }}
+                    formatter={(value, name) => [
+                      formatCurrency(Number(value ?? 0)),
+                      String(name),
+                    ]}
+                  />
+                  <Area
+                    name="淨值"
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#2dd4bf"
+                    strokeWidth={2}
+                    fill="url(#equityFill)"
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                  <Line
+                    name="持股市值"
+                    type="monotone"
+                    dataKey="marketValue"
+                    stroke="#38bdf8"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 3"
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
