@@ -35,6 +35,7 @@ import type { ExposureResult } from '../utils/exposure'
 import {
   analyzeBlueprint,
   blueprintTargetWeights,
+  resolveDipThresholds,
   type BlueprintActionSeverity,
 } from '../utils/blueprint'
 import { formatCurrency, formatNumber, formatPercent, pnlClass } from '../utils/calculations'
@@ -108,6 +109,14 @@ export function RebalancePanel({
       }),
     [exposure, market, settings],
   )
+  const dipThresholds = resolveDipThresholds(settings)
+  const dipThresholdLabel = dipThresholds.map((threshold) => `${threshold}%`).join('／')
+
+  const updateDipThreshold = (index: 0 | 1 | 2, next: number) => {
+    const updated = [...dipThresholds] as [number, number, number]
+    updated[index] = Math.min(Math.max(next, 0), 100)
+    onUpdateSettings({ blueprintDipThresholds: updated })
+  }
 
   const stockRows = plan.rows.filter((row) => !row.isCash)
   const cashRow = plan.rows.find((row) => row.isCash)
@@ -227,6 +236,31 @@ export function RebalancePanel({
             '手動輸入並在創高後更新；系統會以加權指數最新收盤自動計算回撤',
             { step: '0.01', min: 0 },
           )}
+          <div className="space-y-1.5">
+            <span className="text-xs text-slate-400">下跌加碼門檻（% 回撤）</span>
+            <div className="grid grid-cols-3 gap-2">
+              {([0, 1, 2] as const).map((index) => (
+                <label key={index} className="block space-y-1">
+                  <span className="text-[11px] text-slate-500">第 {index + 1} 筆</span>
+                  <input
+                    type="number"
+                    step="1"
+                    min={0}
+                    max={100}
+                    value={dipThresholds[index] || ''}
+                    placeholder="0"
+                    onChange={(event) =>
+                      updateDipThreshold(index, Number(event.target.value) || 0)
+                    }
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-teal-500"
+                  />
+                </label>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-500">
+              預設 10／20／30；加權指數自高點回撤達各門檻時，依序分批加碼
+            </p>
+          </div>
           {numberField(
             '每年安全提領上限（%）',
             settings.blueprintWithdrawalRate,
@@ -431,7 +465,7 @@ export function RebalancePanel({
                 : '—'} · 回撤 {formatNumber(blueprint.dipBuy.drawdown, 1)}%
             </p>
             <p>
-              10%／20%／30% 各加碼一次，每筆約{' '}
+              {dipThresholdLabel} 各加碼一次，每筆約{' '}
               {formatCurrency(blueprint.dipBuy.trancheAmount)}（淨值 5%）
             </p>
             <p>
@@ -702,7 +736,8 @@ export function RebalancePanel({
             <h4 className="font-semibold text-teal-200">一、保留三成現金的防禦機制</h4>
             <p className="mt-1 text-slate-400">
               累積資產時至少保留三成現金（或「兩成原型 ETF + 兩成現金」等效）。市場自高點下跌
-              10% 時投入第一筆 5%；若再跌至 20% 投入第二筆 5%，跌至 30% 投入第三筆 5%，
+              {dipThresholds[0]}% 時投入第一筆 5%；若再跌至 {dipThresholds[1]}% 投入第二筆 5%，跌至{' '}
+              {dipThresholds[2]}% 投入第三筆 5%，
               三筆合計為淨值的 15%。
             </p>
           </section>
@@ -750,7 +785,7 @@ export function RebalancePanel({
           },
           {
             label: '下跌加碼',
-            formula: '回撤 10%／20%／30% → 依序加碼 5%／5%／5% 淨值',
+            formula: `回撤 ${dipThresholdLabel} → 依序加碼 5%／5%／5% 淨值`,
             note: '回撤＝（手動設定的加權指數最高點 − 最新收盤）÷ 最高點；三筆合計 15%',
           },
           {

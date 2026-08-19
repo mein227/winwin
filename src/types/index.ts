@@ -123,6 +123,8 @@ export interface AllocationSettings {
   blueprintRetirementPreset: BlueprintRetirementPreset
   /** 每年質押提領上限佔歷史最高點的比例 %（預設 4） */
   blueprintWithdrawalRate: number
+  /** 下跌加碼三筆門檻（% 回撤），預設 10／20／30 */
+  blueprintDipThresholds: [number, number, number]
 }
 
 export interface ExposureItem {

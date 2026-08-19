@@ -32,6 +32,7 @@ export const defaultAllocationSettings: AllocationSettings = {
   blueprintMarketPeak: 0,
   blueprintRetirementPreset: '333',
   blueprintWithdrawalRate: 4,
+  blueprintDipThresholds: [10, 20, 30],
 }
 
 const ASSET_CLASS_LABELS: Record<AssetClass, string> = {

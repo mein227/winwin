@@ -74,6 +74,7 @@ export interface BlueprintAnalysis {
     triggeredTranches: number
     cumulativePercent: number
     nextTrigger: number | null
+    thresholds: [number, number, number]
     note: string
   }
   retirement: {
@@ -247,12 +248,32 @@ function assignProportionally(
 }
 
 const CASH_DEFENSE = 30
-const DIP_TRIGGER = 10
 const DIP_TRANCHE = 5
 const DIP_MAX_TRANCHES = 3
-const DIP_THRESHOLDS = [10, 20, 30] as const
-const DIP_THRESHOLD_LABEL = DIP_THRESHOLDS.map((t) => `${t}%`).join('／')
 const WEIGHT_TOLERANCE = 3
+
+export const DEFAULT_DIP_THRESHOLDS: [number, number, number] = [10, 20, 30]
+
+function clampDipThreshold(value: unknown, fallback: number): number {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || parsed < 0) return fallback
+  return Math.min(parsed, 100)
+}
+
+export function resolveDipThresholds(
+  settings: AllocationSettings,
+): [number, number, number] {
+  const raw = settings.blueprintDipThresholds
+  return [
+    clampDipThreshold(raw?.[0], DEFAULT_DIP_THRESHOLDS[0]),
+    clampDipThreshold(raw?.[1], DEFAULT_DIP_THRESHOLDS[1]),
+    clampDipThreshold(raw?.[2], DEFAULT_DIP_THRESHOLDS[2]),
+  ]
+}
+
+function formatDipThresholdLabel(thresholds: number[]): string {
+  return thresholds.map((threshold) => `${threshold}%`).join('／')
+}
 
 export function analyzeBlueprint(
   exposure: ExposureResult,
@@ -274,12 +295,15 @@ export function analyzeBlueprint(
   const marketPeak = Math.max(Number(settings.blueprintMarketPeak) || 0, 0)
   const marketClose =
     market.indexClose != null && market.indexClose > 0 ? market.indexClose : null
+  const dipThresholds = resolveDipThresholds(settings)
+  const dipTrigger = dipThresholds[0]
+  const dipThresholdLabel = formatDipThresholdLabel(dipThresholds)
   const drawdown =
     marketPeak > 0 && marketClose != null
       ? Math.max(((marketPeak - marketClose) / marketPeak) * 100, 0)
       : 0
   const triggeredTranches =
-    DIP_THRESHOLDS.filter((threshold) => drawdown + 1e-9 >= threshold).length
+    dipThresholds.filter((threshold) => drawdown + 1e-9 >= threshold).length
   const dipEligible = triggeredTranches > 0
   const trancheAmount = (DIP_TRANCHE / 100) * netWorth
   const peak =
@@ -305,6 +329,9 @@ export function analyzeBlueprint(
     drawdown,
     triggeredTranches,
     trancheAmount,
+    dipThresholds,
+    dipTrigger,
+    dipThresholdLabel,
     maxAnnual,
     peak,
     withdrawalRate,
@@ -347,7 +374,8 @@ export function analyzeBlueprint(
       nextTrigger:
         triggeredTranches >= DIP_MAX_TRANCHES
           ? null
-          : DIP_THRESHOLDS[triggeredTranches],
+          : dipThresholds[triggeredTranches],
+      thresholds: dipThresholds,
       note:
         marketPeak <= 0
           ? `請先填寫${market.indexName}的歷史最高點`
@@ -357,7 +385,7 @@ export function analyzeBlueprint(
               ? `最新收盤 ${marketClose.toFixed(2)} 已高於設定高點，請把最高點更新為新高`
             : dipEligible
               ? `目前回撤 ${formatPct(drawdown)}，已達第 ${triggeredTranches} 筆加碼門檻（累計可投入淨值 ${triggeredTranches * DIP_TRANCHE}%）`
-              : `目前回撤 ${formatPct(drawdown)}；跌至 ${DIP_THRESHOLDS[0]}% 啟動第 1 筆，${DIP_THRESHOLDS[1]}% 第 2 筆，${DIP_THRESHOLDS[2]}% 第 3 筆`,
+              : `目前回撤 ${formatPct(drawdown)}；跌至 ${dipThresholds[0]}% 啟動第 1 筆，${dipThresholds[1]}% 第 2 筆，${dipThresholds[2]}% 第 3 筆`,
     },
     retirement: {
       eligible: stage === 'retire',
@@ -397,6 +425,9 @@ function buildActions(input: {
   drawdown: number
   triggeredTranches: number
   trancheAmount: number
+  dipThresholds: [number, number, number]
+  dipTrigger: number
+  dipThresholdLabel: string
   maxAnnual: number
   peak: number
   withdrawalRate: number
@@ -485,7 +516,7 @@ function buildActions(input: {
       id: 'need-market-peak',
       severity: 'warn',
       title: '請填寫加權指數歷史最高點',
-      detail: `系統會用加權指數最新收盤與此高點自動計算回撤，並在 ${DIP_THRESHOLD_LABEL} 依序觸發三筆加碼。`,
+      detail: `系統會用加權指數最新收盤與此高點自動計算回撤，並在 ${input.dipThresholdLabel} 依序觸發三筆加碼。`,
     })
   } else if (input.marketClose == null) {
     actions.push({
@@ -499,21 +530,21 @@ function buildActions(input: {
       id: 'update-market-peak',
       severity: 'warn',
       title: '加權指數已創新高，請更新最高點',
-      detail: `加權指數最新收盤 ${input.marketClose.toFixed(2)} 已高於設定的 ${input.marketPeak.toFixed(2)}；更新高點後，${DIP_THRESHOLD_LABEL} 加碼基準才會正確。`,
+      detail: `加權指數最新收盤 ${input.marketClose.toFixed(2)} 已高於設定的 ${input.marketPeak.toFixed(2)}；更新高點後，${input.dipThresholdLabel} 加碼基準才會正確。`,
     })
   } else if (input.dipEligible) {
     actions.push({
       id: 'dip-buy',
       severity: 'urgent',
       title: `第 ${input.triggeredTranches} 筆下跌加碼門檻已達成`,
-      detail: `目前自高點下跌 ${formatPct(input.drawdown)}；${DIP_THRESHOLD_LABEL} 各投入淨值 ${DIP_TRANCHE}%（每筆約 ${formatMoney(input.trancheAmount)}）。目前累計門檻為 ${input.triggeredTranches} 筆、共 ${input.triggeredTranches * DIP_TRANCHE}%。`,
+      detail: `目前自高點下跌 ${formatPct(input.drawdown)}；${input.dipThresholdLabel} 各投入淨值 ${DIP_TRANCHE}%（每筆約 ${formatMoney(input.trancheAmount)}）。目前累計門檻為 ${input.triggeredTranches} 筆、共 ${input.triggeredTranches * DIP_TRANCHE}%。`,
     })
-  } else if (input.drawdown > 0 && input.drawdown < DIP_TRIGGER) {
+  } else if (input.drawdown > 0 && input.drawdown < input.dipTrigger) {
     actions.push({
       id: 'dip-watch',
       severity: 'info',
       title: `尚未達下跌加碼門檻（目前跌 ${formatPct(input.drawdown)}）`,
-      detail: `從高點跌幅達 ${DIP_TRIGGER}% 才動用三成現金分批加碼；現在以持有與觀察為主，並在創高後重設基準。`,
+      detail: `從高點跌幅達 ${input.dipTrigger}% 才動用三成現金分批加碼；現在以持有與觀察為主，並在創高後重設基準。`,
     })
   }
 
