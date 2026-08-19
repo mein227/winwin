@@ -431,7 +431,7 @@ export function RebalancePanel({
                 : '—'} · 回撤 {formatNumber(blueprint.dipBuy.drawdown, 1)}%
             </p>
             <p>
-              30%／40%／50% 各加碼一次，每筆約{' '}
+              10%／20%／30% 各加碼一次，每筆約{' '}
               {formatCurrency(blueprint.dipBuy.trancheAmount)}（淨值 5%）
             </p>
             <p>
@@ -702,7 +702,7 @@ export function RebalancePanel({
             <h4 className="font-semibold text-teal-200">一、保留三成現金的防禦機制</h4>
             <p className="mt-1 text-slate-400">
               累積資產時至少保留三成現金（或「兩成原型 ETF + 兩成現金」等效）。市場自高點下跌
-              30% 時投入第一筆 5%；若再跌至 40% 投入第二筆 5%，跌至 50% 投入第三筆 5%，
+              10% 時投入第一筆 5%；若再跌至 20% 投入第二筆 5%，跌至 30% 投入第三筆 5%，
               三筆合計為淨值的 15%。
             </p>
           </section>
@@ -750,7 +750,7 @@ export function RebalancePanel({
           },
           {
             label: '下跌加碼',
-            formula: '回撤 30%／40%／50% → 依序加碼 5%／5%／5% 淨值',
+            formula: '回撤 10%／20%／30% → 依序加碼 5%／5%／5% 淨值',
             note: '回撤＝（手動設定的加權指數最高點 − 最新收盤）÷ 最高點；三筆合計 15%',
           },
           {

@@ -247,10 +247,11 @@ function assignProportionally(
 }
 
 const CASH_DEFENSE = 30
-const DIP_TRIGGER = 30
+const DIP_TRIGGER = 10
 const DIP_TRANCHE = 5
 const DIP_MAX_TRANCHES = 3
-const DIP_THRESHOLDS = [30, 40, 50] as const
+const DIP_THRESHOLDS = [10, 20, 30] as const
+const DIP_THRESHOLD_LABEL = DIP_THRESHOLDS.map((t) => `${t}%`).join('／')
 const WEIGHT_TOLERANCE = 3
 
 export function analyzeBlueprint(
@@ -356,7 +357,7 @@ export function analyzeBlueprint(
               ? `最新收盤 ${marketClose.toFixed(2)} 已高於設定高點，請把最高點更新為新高`
             : dipEligible
               ? `目前回撤 ${formatPct(drawdown)}，已達第 ${triggeredTranches} 筆加碼門檻（累計可投入淨值 ${triggeredTranches * DIP_TRANCHE}%）`
-              : `目前回撤 ${formatPct(drawdown)}；跌至 30% 啟動第 1 筆，40% 第 2 筆，50% 第 3 筆`,
+              : `目前回撤 ${formatPct(drawdown)}；跌至 ${DIP_THRESHOLDS[0]}% 啟動第 1 筆，${DIP_THRESHOLDS[1]}% 第 2 筆，${DIP_THRESHOLDS[2]}% 第 3 筆`,
     },
     retirement: {
       eligible: stage === 'retire',
@@ -484,7 +485,7 @@ function buildActions(input: {
       id: 'need-market-peak',
       severity: 'warn',
       title: '請填寫加權指數歷史最高點',
-      detail: '系統會用加權指數最新收盤與此高點自動計算回撤，並在 30%、40%、50% 依序觸發三筆加碼。',
+      detail: `系統會用加權指數最新收盤與此高點自動計算回撤，並在 ${DIP_THRESHOLD_LABEL} 依序觸發三筆加碼。`,
     })
   } else if (input.marketClose == null) {
     actions.push({
@@ -498,14 +499,14 @@ function buildActions(input: {
       id: 'update-market-peak',
       severity: 'warn',
       title: '加權指數已創新高，請更新最高點',
-      detail: `加權指數最新收盤 ${input.marketClose.toFixed(2)} 已高於設定的 ${input.marketPeak.toFixed(2)}；更新高點後，30%／40%／50% 加碼基準才會正確。`,
+      detail: `加權指數最新收盤 ${input.marketClose.toFixed(2)} 已高於設定的 ${input.marketPeak.toFixed(2)}；更新高點後，${DIP_THRESHOLD_LABEL} 加碼基準才會正確。`,
     })
   } else if (input.dipEligible) {
     actions.push({
       id: 'dip-buy',
       severity: 'urgent',
       title: `第 ${input.triggeredTranches} 筆下跌加碼門檻已達成`,
-      detail: `目前自高點下跌 ${formatPct(input.drawdown)}；30%、40%、50% 各投入淨值 ${DIP_TRANCHE}%（每筆約 ${formatMoney(input.trancheAmount)}）。目前累計門檻為 ${input.triggeredTranches} 筆、共 ${input.triggeredTranches * DIP_TRANCHE}%。`,
+      detail: `目前自高點下跌 ${formatPct(input.drawdown)}；${DIP_THRESHOLD_LABEL} 各投入淨值 ${DIP_TRANCHE}%（每筆約 ${formatMoney(input.trancheAmount)}）。目前累計門檻為 ${input.triggeredTranches} 筆、共 ${input.triggeredTranches * DIP_TRANCHE}%。`,
     })
   } else if (input.drawdown > 0 && input.drawdown < DIP_TRIGGER) {
     actions.push({
