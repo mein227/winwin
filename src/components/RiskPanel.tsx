@@ -17,7 +17,7 @@ import { Activity, LoaderCircle, RefreshCw, Shield, TrendingDown } from 'lucide-
 import type { AllocationSettings, PortfolioRisk } from '../types'
 import type { ExposureResult } from '../utils/exposure'
 import { formatCurrency, formatNumber, formatPercent, pnlClass } from '../utils/calculations'
-import { chartColor, tooltipStyle } from '../utils/chartColors'
+import { CHART_FONT_SIZE, chartColor, tooltipStyle } from '../utils/chartColors'
 import { FormulaCard } from './FormulaCard'
 
 interface RiskPanelProps {
@@ -265,7 +265,7 @@ export function RiskPanel({
                       dataKey="volatility"
                       name="年化波動"
                       stroke="#64748b"
-                      fontSize={12}
+                      fontSize={CHART_FONT_SIZE}
                       tickFormatter={(v) => `${v}%`}
                     />
                     <YAxis
@@ -273,7 +273,7 @@ export function RiskPanel({
                       dataKey="return"
                       name="年化報酬"
                       stroke="#64748b"
-                      fontSize={12}
+                      fontSize={CHART_FONT_SIZE}
                       tickFormatter={(v) => `${v}%`}
                     />
                     <ZAxis type="number" dataKey="weight" range={[60, 400]} />
@@ -285,7 +285,7 @@ export function RiskPanel({
                       ]}
                       labelFormatter={() => ''}
                     />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Legend wrapperStyle={{ fontSize: CHART_FONT_SIZE }} />
                     <Scatter name="個股／ETF" data={scatterData.assets} fill="#38bdf8">
                       {scatterData.assets.map((entry, index) => (
                         <Cell key={entry.name} fill={chartColor(index)} />
@@ -317,8 +317,8 @@ export function RiskPanel({
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={contributionData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                    <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-                    <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => `${v}%`} />
+                    <XAxis dataKey="name" stroke="#64748b" fontSize={CHART_FONT_SIZE} />
+                    <YAxis stroke="#64748b" fontSize={CHART_FONT_SIZE} tickFormatter={(v) => `${v}%`} />
                     <Tooltip
                       contentStyle={tooltipStyle}
                       formatter={(value, name) => [
@@ -327,7 +327,7 @@ export function RiskPanel({
                       ]}
                     />
                     <Legend
-                      wrapperStyle={{ fontSize: 12 }}
+                      wrapperStyle={{ fontSize: CHART_FONT_SIZE }}
                       formatter={(value) => (
                         <span className="text-slate-300">
                           {value === 'weight' ? '市值權重' : '風險貢獻'}

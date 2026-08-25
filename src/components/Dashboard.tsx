@@ -27,6 +27,7 @@ import {
   pnlClass,
 } from '../utils/calculations'
 import { fetchStockQuotes } from '../services/stockQuote'
+import { CHART_FONT_SIZE } from '../utils/chartColors'
 import { buildEquityCurve } from '../utils/pnl'
 import type { PnlCalendarState } from '../hooks/usePnlCalendar'
 import { StatCard } from './StatCard'
@@ -248,7 +249,7 @@ export function Dashboard({
       />
 
       <div className="grid gap-6 lg:grid-cols-5">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 lg:col-span-3">
+        <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 lg:col-span-3">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
             <div>
               <h3 className="text-base font-semibold text-white">資產淨值走勢（估算）</h3>
@@ -287,14 +288,14 @@ export function Dashboard({
                   <XAxis
                     dataKey="date"
                     stroke="#64748b"
-                    fontSize={12}
+                    fontSize={CHART_FONT_SIZE}
                     minTickGap={32}
                     tickFormatter={(v) => String(v).slice(5).replace('-', '/')}
                   />
                   <YAxis
                     stroke="#64748b"
-                    fontSize={12}
-                    width={64}
+                    fontSize={CHART_FONT_SIZE}
+                    width={112}
                     // 淨值多半只在小區間內波動，固定從 0 起算會讓曲線看起來是一條直線
                     domain={['auto', 'auto']}
                     tickFormatter={(v) => formatCompact(v as number)}
@@ -337,7 +338,7 @@ export function Dashboard({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 lg:col-span-2">
+        <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 lg:col-span-2">
           <h3 className="mb-4 text-base font-semibold text-white">持股貢獻 TOP 5</h3>
           {topHoldings.length === 0 ? (
             <p className="py-10 text-center text-sm text-slate-500">尚無持股，請先新增進出紀錄</p>

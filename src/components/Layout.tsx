@@ -34,20 +34,20 @@ export function Layout({ activeTab, onTabChange, children }: LayoutProps) {
 
       <header className="relative border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 shadow-lg shadow-teal-500/20">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 shadow-lg shadow-teal-500/20">
               <TrendingUp className="h-5 w-5 text-white" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-lg font-bold tracking-tight text-white sm:text-xl">
                 WinWin
               </h1>
-              <p className="text-xs text-slate-400">
+              <p className="truncate text-xs text-slate-400">
                 個股進出・現金・曝險槓桿・配置藍圖・報酬風險
               </p>
             </div>
           </div>
-          <nav className="hidden items-center gap-1 rounded-xl border border-slate-800 bg-slate-900/70 p-1 md:flex">
+          <nav className="hidden items-center gap-1 rounded-xl border border-slate-800 bg-slate-900/70 p-1 xl:flex">
             {tabs.map((tab) => {
               const Icon = tab.icon
               const active = activeTab === tab.id
@@ -56,7 +56,7 @@ export function Layout({ activeTab, onTabChange, children }: LayoutProps) {
                   key={tab.id}
                   type="button"
                   onClick={() => onTabChange(tab.id)}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-[min(0.875rem,1.6vw)] font-medium transition ${
                     active
                       ? 'bg-teal-500/20 text-teal-300 shadow-sm'
                       : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
@@ -75,7 +75,8 @@ export function Layout({ activeTab, onTabChange, children }: LayoutProps) {
         {children}
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-800 bg-slate-950/95 backdrop-blur-xl md:hidden">
+      {/* 五個分頁要並排，視窗寬度不會隨根字級放大，因此標籤字級以 vw 設上限 */}
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-800 bg-slate-950/95 backdrop-blur-xl xl:hidden">
         <div className="mx-auto grid max-w-lg grid-cols-5 gap-1 px-2 py-2">
           {tabs.map((tab) => {
             const Icon = tab.icon
@@ -85,7 +86,7 @@ export function Layout({ activeTab, onTabChange, children }: LayoutProps) {
                 key={tab.id}
                 type="button"
                 onClick={() => onTabChange(tab.id)}
-                className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 text-[11px] font-medium ${
+                className={`flex flex-col items-center gap-1 whitespace-nowrap rounded-lg px-1 py-2 text-[min(0.6875rem,2.8vw)] font-medium ${
                   active ? 'text-teal-300' : 'text-slate-500'
                 }`}
               >
@@ -97,7 +98,7 @@ export function Layout({ activeTab, onTabChange, children }: LayoutProps) {
         </div>
       </nav>
 
-      <div className="h-20 md:hidden" />
+      <div className="h-20 xl:hidden" />
     </div>
   )
 }

@@ -20,6 +20,9 @@ export function chartColor(index: number): string {
   return CHART_COLORS[index % CHART_COLORS.length]
 }
 
+/** Recharts 座標軸、圖例字級（SVG 只吃 px，不會隨根字級縮放） */
+export const CHART_FONT_SIZE = 24
+
 /** Recharts 提示框樣式（深色主題） */
 export const tooltipStyle = {
   background: '#0f172a',

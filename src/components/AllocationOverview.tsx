@@ -15,7 +15,14 @@ import {
 import type { Holding } from '../types'
 import type { ExposureResult } from '../utils/exposure'
 import { formatCurrency, formatNumber, formatPercent, pnlClass } from '../utils/calculations'
-import { CASH_COLOR, GAIN_COLOR, LOSS_COLOR, chartColor, tooltipStyle } from '../utils/chartColors'
+import {
+  CASH_COLOR,
+  CHART_FONT_SIZE,
+  GAIN_COLOR,
+  LOSS_COLOR,
+  chartColor,
+  tooltipStyle,
+} from '../utils/chartColors'
 import { FormulaCard } from './FormulaCard'
 
 interface AllocationOverviewProps {
@@ -145,8 +152,8 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
+                    innerRadius="45%"
+                    outerRadius="75%"
                     paddingAngle={2}
                   >
                     {pieData.map((entry) => (
@@ -161,7 +168,7 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
                     ]}
                   />
                   <Legend
-                    wrapperStyle={{ fontSize: 12 }}
+                    wrapperStyle={{ fontSize: CHART_FONT_SIZE }}
                     formatter={(value) => (
                       <span className="text-slate-300">{String(value)}</span>
                     )}
@@ -182,7 +189,7 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    outerRadius={100}
+                    outerRadius="75%"
                     paddingAngle={2}
                   >
                     {classData.map((entry) => (
@@ -197,7 +204,7 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
                     ]}
                   />
                   <Legend
-                    wrapperStyle={{ fontSize: 12 }}
+                    wrapperStyle={{ fontSize: CHART_FONT_SIZE }}
                     formatter={(value) => (
                       <span className="text-slate-300">{String(value)}</span>
                     )}
@@ -216,10 +223,10 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={pnlData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
+                <XAxis dataKey="name" stroke="#64748b" fontSize={CHART_FONT_SIZE} />
                 <YAxis
                   stroke="#64748b"
-                  fontSize={12}
+                  fontSize={CHART_FONT_SIZE}
                   tickFormatter={(v) =>
                     new Intl.NumberFormat('zh-TW', { notation: 'compact' }).format(
                       v as number,
@@ -276,7 +283,7 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 sm:min-w-[280px]">
+                  <div className="flex items-center gap-4 sm:min-w-[17.5rem]">
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
                       <div
                         className="h-full rounded-full"
