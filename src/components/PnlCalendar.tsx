@@ -98,15 +98,15 @@ export function PnlCalendar({
         <button
           type="button"
           onClick={() => onSelectRange(month.startDate, month.endDate)}
-          className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm transition hover:bg-slate-800/60 ${
+          className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 rounded-xl border px-3 py-1.5 text-sm transition hover:bg-slate-800/60 ${
             inRange(month.startDate) && inRange(month.endDate)
               ? 'border-teal-500/50 bg-teal-500/10'
               : 'border-slate-700 bg-slate-900'
           }`}
         >
-          <span className="text-xs text-slate-400">本月損益</span>
+          <span className="whitespace-nowrap text-xs text-slate-400">本月損益</span>
           <span
-            className={`font-semibold ${
+            className={`whitespace-nowrap font-semibold ${
               month.total.pnl > 0
                 ? 'text-emerald-300'
                 : month.total.pnl < 0
@@ -116,13 +116,14 @@ export function PnlCalendar({
           >
             {formatCurrency(month.total.pnl)}
           </span>
-          <span className="text-xs text-slate-500">
+          <span className="whitespace-nowrap text-xs text-slate-500">
             {formatNumber(month.total.pnlPercent, 2)}%
           </span>
         </button>
       </div>
 
-      <div className="mb-1 grid grid-cols-6 gap-0.5 text-center text-[0.625rem] text-slate-500 sm:gap-1 sm:text-xs">
+      {/* 六欄格子寬度取決於視窗，字級以 vw 設上限，格子才不會被文字撐破 */}
+      <div className="mb-1 grid grid-cols-6 gap-0.5 text-center text-[min(0.75rem,2.5vw)] text-slate-500 sm:gap-1">
         {WEEKDAYS.map((label) => (
           <div key={label} className="py-1">
             {label}
@@ -142,7 +143,7 @@ export function PnlCalendar({
                 return (
                   <div
                     key={cell.date}
-                    className={`h-14 rounded-lg border border-slate-800/60 bg-slate-950/30 px-1 py-1 text-[0.625rem] sm:h-[3.875rem] sm:px-2 sm:text-xs ${
+                    className={`h-14 rounded-lg border border-slate-800/60 bg-slate-950/30 px-1 py-1 text-[min(0.75rem,2.5vw)] sm:h-[3.875rem] sm:px-2 ${
                       cell.inMonth ? 'text-slate-600' : 'text-slate-700'
                     } ${selected ? 'ring-1 ring-teal-500/40' : ''}`}
                   >
@@ -157,14 +158,14 @@ export function PnlCalendar({
                   type="button"
                   title={dayTitle(day)}
                   onClick={() => onSelectRange(cell.date, cell.date)}
-                  className={`h-14 overflow-hidden rounded-lg border px-0.5 py-1 text-left transition hover:brightness-125 min-[360px]:px-1 sm:h-[3.875rem] sm:px-2 ${toneClass(
+                  className={`h-14 overflow-hidden rounded-lg border px-0.5 py-1 text-left transition hover:brightness-125 sm:h-[3.875rem] sm:px-2 ${toneClass(
                     day.pnl,
                     maxAbs,
                   )} ${cell.inMonth ? '' : 'opacity-45'} ${
                     selected ? 'ring-2 ring-teal-400' : ''
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-1 text-[0.625rem] text-slate-400 sm:text-xs">
+                  <div className="flex items-center justify-between gap-1 text-[min(0.75rem,2.5vw)] text-slate-400">
                     <span className={cell.isToday ? 'font-bold text-teal-300' : ''}>
                       {cell.dayOfMonth}
                     </span>
@@ -172,10 +173,10 @@ export function PnlCalendar({
                       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" />
                     )}
                   </div>
-                  <div className="mt-0.5 truncate text-[0.625rem] font-semibold leading-tight min-[360px]:text-[0.6875rem] sm:text-sm">
+                  <div className="mt-0.5 truncate text-[min(0.875rem,2.9vw)] font-semibold leading-tight">
                     {formatCompact(day.pnl, true)}
                   </div>
-                  <div className="truncate text-[0.5625rem] leading-tight opacity-70 sm:text-[0.6875rem]">
+                  <div className="truncate text-[min(0.6875rem,2.3vw)] leading-tight opacity-70">
                     {formatNumber(day.pnlPercent, 2)}%
                   </div>
                 </button>
@@ -186,17 +187,17 @@ export function PnlCalendar({
               type="button"
               onClick={() => onSelectRange(week.startDate, week.endDate)}
               title={`${week.total.label} 損益 ${formatCurrency(week.total.pnl)}`}
-              className={`h-14 overflow-hidden rounded-lg border border-slate-700/70 bg-slate-950/60 px-0.5 py-1 text-left transition hover:bg-slate-800/60 min-[360px]:px-1 sm:h-[3.875rem] sm:px-2 ${
+              className={`h-14 overflow-hidden rounded-lg border border-slate-700/70 bg-slate-950/60 px-0.5 py-1 text-left transition hover:bg-slate-800/60 sm:h-[3.875rem] sm:px-2 ${
                 range.start === week.startDate && range.end === week.endDate
                   ? 'ring-2 ring-teal-400'
                   : ''
               }`}
             >
-              <div className="text-[0.5625rem] text-slate-500 sm:text-[0.6875rem]">
+              <div className="text-[min(0.6875rem,2.3vw)] text-slate-500">
                 W{week.weekOfYear}
               </div>
               <div
-                className={`mt-0.5 truncate text-[0.625rem] font-semibold leading-tight min-[360px]:text-[0.6875rem] sm:text-sm ${
+                className={`mt-0.5 truncate text-[min(0.875rem,2.9vw)] font-semibold leading-tight ${
                   week.total.pnl > 0
                     ? 'text-emerald-300'
                     : week.total.pnl < 0
@@ -206,7 +207,7 @@ export function PnlCalendar({
               >
                 {week.total.tradingDays === 0 ? '—' : formatCompact(week.total.pnl, true)}
               </div>
-              <div className="truncate text-[0.5625rem] leading-tight text-slate-500 sm:text-[0.6875rem]">
+              <div className="truncate text-[min(0.6875rem,2.3vw)] leading-tight text-slate-500">
                 {week.total.tradingDays} 日
               </div>
             </button>
