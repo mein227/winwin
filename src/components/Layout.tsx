@@ -85,7 +85,7 @@ export function Layout({ activeTab, onTabChange, children }: LayoutProps) {
                 key={tab.id}
                 type="button"
                 onClick={() => onTabChange(tab.id)}
-                className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 text-[11px] font-medium ${
+                className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 text-[0.6875rem] font-medium ${
                   active ? 'text-teal-300' : 'text-slate-500'
                 }`}
               >

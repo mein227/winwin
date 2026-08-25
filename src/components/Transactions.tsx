@@ -163,7 +163,7 @@ export function Transactions({
                       <td className="px-4 py-3 text-right text-slate-400">
                         {formatCurrency(fees)}
                       </td>
-                      <td className="max-w-[160px] truncate px-4 py-3 text-slate-500">
+                      <td className="max-w-[10rem] truncate px-4 py-3 text-slate-500">
                         {tx.note || '—'}
                       </td>
                       <td className="px-4 py-3">

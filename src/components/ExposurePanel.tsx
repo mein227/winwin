@@ -20,7 +20,7 @@ import {
   marketScenario,
 } from '../utils/exposure'
 import { formatCurrency, formatNumber, formatPercent, pnlClass } from '../utils/calculations'
-import { tooltipStyle } from '../utils/chartColors'
+import { CHART_FONT_SIZE, tooltipStyle } from '../utils/chartColors'
 import { FormulaCard } from './FormulaCard'
 
 interface ExposurePanelProps {
@@ -216,10 +216,10 @@ export function ExposurePanel({
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={CHART_FONT_SIZE} />
                   <YAxis
                     stroke="#64748b"
-                    fontSize={12}
+                    fontSize={CHART_FONT_SIZE}
                     tickFormatter={(v) =>
                       new Intl.NumberFormat('zh-TW', { notation: 'compact' }).format(
                         v as number,
@@ -234,7 +234,7 @@ export function ExposurePanel({
                     ]}
                   />
                   <Legend
-                    wrapperStyle={{ fontSize: 12 }}
+                    wrapperStyle={{ fontSize: CHART_FONT_SIZE }}
                     formatter={(value) => (
                       <span className="text-slate-300">
                         {value === 'marketValue' ? '市值' : '曝險'}
@@ -321,7 +321,7 @@ export function ExposurePanel({
                               <RotateCcw className="h-3.5 w-3.5" />
                             </button>
                           ) : (
-                            <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-400">
+                            <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[0.625rem] text-slate-400">
                               自動
                             </span>
                           )}

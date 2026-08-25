@@ -27,6 +27,7 @@ import {
   pnlClass,
 } from '../utils/calculations'
 import { fetchStockQuotes } from '../services/stockQuote'
+import { CHART_FONT_SIZE } from '../utils/chartColors'
 import { buildEquityCurve } from '../utils/pnl'
 import type { PnlCalendarState } from '../hooks/usePnlCalendar'
 import { StatCard } from './StatCard'
@@ -287,14 +288,14 @@ export function Dashboard({
                   <XAxis
                     dataKey="date"
                     stroke="#64748b"
-                    fontSize={12}
+                    fontSize={CHART_FONT_SIZE}
                     minTickGap={32}
                     tickFormatter={(v) => String(v).slice(5).replace('-', '/')}
                   />
                   <YAxis
                     stroke="#64748b"
-                    fontSize={12}
-                    width={64}
+                    fontSize={CHART_FONT_SIZE}
+                    width={112}
                     // 淨值多半只在小區間內波動，固定從 0 起算會讓曲線看起來是一條直線
                     domain={['auto', 'auto']}
                     tickFormatter={(v) => formatCompact(v as number)}

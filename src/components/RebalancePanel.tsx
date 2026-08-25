@@ -39,7 +39,7 @@ import {
   type BlueprintActionSeverity,
 } from '../utils/blueprint'
 import { formatCurrency, formatNumber, formatPercent, pnlClass } from '../utils/calculations'
-import { tooltipStyle } from '../utils/chartColors'
+import { CHART_FONT_SIZE, tooltipStyle } from '../utils/chartColors'
 import { useBlueprintMarketData } from '../hooks/useBlueprintMarketData'
 import { FormulaCard } from './FormulaCard'
 
@@ -188,7 +188,7 @@ export function RebalancePanel({
         onChange={(event) => onChange(Number(event.target.value) || 0)}
         className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-teal-500"
       />
-      {hint && <p className="text-[11px] text-slate-500">{hint}</p>}
+      {hint && <p className="text-[0.6875rem] text-slate-500">{hint}</p>}
     </label>
   )
 
@@ -241,7 +241,7 @@ export function RebalancePanel({
             <div className="grid grid-cols-3 gap-2">
               {([0, 1, 2] as const).map((index) => (
                 <label key={index} className="block space-y-1">
-                  <span className="text-[11px] text-slate-500">第 {index + 1} 筆</span>
+                  <span className="text-[0.6875rem] text-slate-500">第 {index + 1} 筆</span>
                   <input
                     type="number"
                     step="1"
@@ -257,7 +257,7 @@ export function RebalancePanel({
                 </label>
               ))}
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[0.6875rem] text-slate-500">
               預設 10／20／30；加權指數自高點回撤達各門檻時，依序分批加碼
             </p>
           </div>
@@ -302,7 +302,7 @@ export function RebalancePanel({
                 </button>
               </div>
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[0.6875rem] text-slate-500">
               {market.message ||
                 (market.indexQuote
                   ? `${market.indexQuote.date} 收盤；正二損益＝持有股數 × 當日價差`
@@ -327,7 +327,7 @@ export function RebalancePanel({
                 </button>
               ))}
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[0.6875rem] text-slate-500">
               {
                 retirementOptions.find(
                   (option) => option.id === settings.blueprintRetirementPreset,
@@ -519,8 +519,8 @@ export function RebalancePanel({
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={compareChart}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-              <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => `${v}%`} />
+              <XAxis dataKey="name" stroke="#64748b" fontSize={CHART_FONT_SIZE} />
+              <YAxis stroke="#64748b" fontSize={CHART_FONT_SIZE} tickFormatter={(v) => `${v}%`} />
               <Tooltip
                 contentStyle={tooltipStyle}
                 formatter={(value, name) => [
@@ -529,7 +529,7 @@ export function RebalancePanel({
                 ]}
               />
               <Legend
-                wrapperStyle={{ fontSize: 12 }}
+                wrapperStyle={{ fontSize: CHART_FONT_SIZE }}
                 formatter={(value) => (
                   <span className="text-slate-300">
                     {value === 'current' ? '目前權重' : '目標權重'}
@@ -673,7 +673,7 @@ export function RebalancePanel({
                           {row.action === 'buy' ? '買進' : row.action === 'sell' ? '賣出' : '不動作'}
                         </span>
                         {row.sellReason && (
-                          <div className="mt-1 text-[10px] text-slate-500">
+                          <div className="mt-1 text-[0.625rem] text-slate-500">
                             {sellReasonLabels[row.sellReason]}
                           </div>
                         )}
@@ -709,8 +709,8 @@ export function RebalancePanel({
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={detailChart}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-                  <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => `${v}%`} />
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={CHART_FONT_SIZE} />
+                  <YAxis stroke="#64748b" fontSize={CHART_FONT_SIZE} tickFormatter={(v) => `${v}%`} />
                   <Tooltip
                     contentStyle={tooltipStyle}
                     formatter={(value, name) => [
