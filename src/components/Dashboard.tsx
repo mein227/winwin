@@ -295,7 +295,7 @@ export function Dashboard({
                   <YAxis
                     stroke="#64748b"
                     fontSize={CHART_FONT_SIZE}
-                    width={112}
+                    width={72}
                     // 淨值多半只在小區間內波動，固定從 0 起算會讓曲線看起來是一條直線
                     domain={['auto', 'auto']}
                     tickFormatter={(v) => formatCompact(v as number)}
