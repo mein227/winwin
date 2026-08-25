@@ -249,7 +249,7 @@ export function Dashboard({
       />
 
       <div className="grid gap-6 lg:grid-cols-5">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 lg:col-span-3">
+        <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 lg:col-span-3">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
             <div>
               <h3 className="text-base font-semibold text-white">資產淨值走勢（估算）</h3>
@@ -338,7 +338,7 @@ export function Dashboard({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 lg:col-span-2">
+        <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 lg:col-span-2">
           <h3 className="mb-4 text-base font-semibold text-white">持股貢獻 TOP 5</h3>
           {topHoldings.length === 0 ? (
             <p className="py-10 text-center text-sm text-slate-500">尚無持股，請先新增進出紀錄</p>
