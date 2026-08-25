@@ -112,7 +112,7 @@ export function PnlRangeControls({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+      <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
         {presets.map((preset) => {
           const active =
             preset.range.start === range.start && preset.range.end === range.end
@@ -121,7 +121,7 @@ export function PnlRangeControls({
               key={preset.label}
               type="button"
               onClick={() => onRangeChange(preset.range)}
-              className={`whitespace-nowrap rounded-xl border px-2 py-1.5 text-[min(0.875rem,3.4vw)] transition sm:px-3 ${
+              className={`whitespace-nowrap rounded-xl border px-3 py-1.5 text-[min(0.875rem,3.4vw)] transition ${
                 active
                   ? 'border-teal-500/50 bg-teal-500/15 text-teal-200'
                   : 'border-slate-700 bg-slate-950/60 text-slate-300 hover:bg-slate-800'
