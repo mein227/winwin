@@ -158,7 +158,7 @@ export function PnlCalendar({
                   type="button"
                   title={dayTitle(day)}
                   onClick={() => onSelectRange(cell.date, cell.date)}
-                  className={`h-14 overflow-hidden rounded-lg border px-0.5 py-1 text-left transition hover:brightness-125 sm:h-[3.875rem] sm:px-2 ${toneClass(
+                  className={`h-14 overflow-hidden rounded-lg border px-0.5 py-1 text-left transition hover:brightness-125 min-[360px]:px-1 sm:h-[3.875rem] sm:px-2 ${toneClass(
                     day.pnl,
                     maxAbs,
                   )} ${cell.inMonth ? '' : 'opacity-45'} ${
@@ -187,7 +187,7 @@ export function PnlCalendar({
               type="button"
               onClick={() => onSelectRange(week.startDate, week.endDate)}
               title={`${week.total.label} 損益 ${formatCurrency(week.total.pnl)}`}
-              className={`h-14 overflow-hidden rounded-lg border border-slate-700/70 bg-slate-950/60 px-0.5 py-1 text-left transition hover:bg-slate-800/60 sm:h-[3.875rem] sm:px-2 ${
+              className={`h-14 overflow-hidden rounded-lg border border-slate-700/70 bg-slate-950/60 px-0.5 py-1 text-left transition hover:bg-slate-800/60 min-[360px]:px-1 sm:h-[3.875rem] sm:px-2 ${
                 range.start === week.startDate && range.end === week.endDate
                   ? 'ring-2 ring-teal-400'
                   : ''

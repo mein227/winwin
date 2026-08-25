@@ -12,7 +12,7 @@
 
 html {
   /* 版面尺寸皆以 rem 為基準，調整根字級即可等比放大整體字體與間距 */
-  font-size: 200%;
+  font-size: 112.5%;
   scroll-behavior: smooth;
 }
 

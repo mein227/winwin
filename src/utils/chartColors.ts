@@ -21,7 +21,7 @@ export function chartColor(index: number): string {
 }
 
 /** Recharts 座標軸、圖例字級（SVG 只吃 px，不會隨根字級縮放） */
-export const CHART_FONT_SIZE = 24
+export const CHART_FONT_SIZE = 14
 
 /** Recharts 提示框樣式（深色主題） */
 export const tooltipStyle = {
