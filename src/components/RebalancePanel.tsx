@@ -43,7 +43,7 @@ import {
 import { formatCurrency, formatNumber, formatPercent, pnlClass } from '../utils/calculations'
 import { CHART_FONT_SIZE, tooltipStyle } from '../utils/chartColors'
 import { useBlueprintMarketData } from '../hooks/useBlueprintMarketData'
-import { FormulaCard } from './FormulaCard'
+import { FormulaHint } from './FormulaHint'
 
 interface RebalancePanelProps {
   plan: RebalancePlan
@@ -374,13 +374,22 @@ export function RebalancePanel({
           <p className="mt-1 text-[0.6875rem] text-slate-400 sm:mt-2 sm:text-xs">
             {blueprint.stageHint}
           </p>
-          <p className="mt-2 text-xs text-slate-300 sm:mt-3 sm:text-sm">
+          <p className="mt-2 flex items-center gap-1 text-xs text-slate-300 sm:mt-3 sm:text-sm">
             生活費倍數：{' '}
             <span className="font-semibold text-teal-200">
               {blueprint.livingExpenseMultiple == null
                 ? '—'
                 : `${formatNumber(blueprint.livingExpenseMultiple, 1)} 倍`}
             </span>
+            <FormulaHint
+              title="生活費倍數"
+              formula="生活費倍數 = 總淨值 ÷ 年生活費"
+              note={
+                blueprint.livingExpenseMultiple == null
+                  ? '填寫年生活費後即可判定階段'
+                  : `目前約 ${formatNumber(blueprint.livingExpenseMultiple, 1)} 倍 → ${blueprint.targets.label}`
+              }
+            />
           </p>
           <p className="mt-0.5 text-xs text-slate-300 sm:mt-1 sm:text-sm">
             總淨值 {formatCurrency(exposure.summary.netWorth)}
@@ -391,6 +400,11 @@ export function RebalancePanel({
           <div className="flex items-center gap-1.5 text-slate-400 sm:gap-2">
             <Shield className="h-4 w-4 text-sky-300" />
             <p className="text-xs sm:text-sm">本階段目標</p>
+            <FormulaHint
+              title="階段目標配置"
+              formula="<10×→73｜10–15×→253｜15–20×→343｜≥20×→333/433"
+              note="現金目標通常維持約 30%，正二與原型隨階段此消彼長"
+            />
           </div>
           <p className="mt-1 text-base font-bold text-sky-200 sm:mt-2 sm:text-xl">
             {blueprint.targets.label}
@@ -488,6 +502,11 @@ export function RebalancePanel({
           <div className="flex items-center gap-2">
             <TrendingDown className="h-4 w-4 text-rose-300" />
             <p className="text-xs font-semibold text-white sm:text-sm">下跌加碼</p>
+            <FormulaHint
+              title="下跌加碼"
+              formula={`回撤 ${dipThresholdLabel} → 依序加碼 5%／5%／5% 淨值`}
+              note="回撤＝（手動設定的加權指數最高點 − 最新收盤）÷ 最高點；三筆合計 15%"
+            />
           </div>
           <p className="mt-1.5 text-[0.6875rem] text-slate-300 sm:mt-2 sm:text-xs">
             {blueprint.dipBuy.note}
@@ -525,6 +544,11 @@ export function RebalancePanel({
           <div className="flex items-center gap-2">
             <Landmark className="h-4 w-4 text-amber-300" />
             <p className="text-xs font-semibold text-white sm:text-sm">質押退休現金流</p>
+            <FormulaHint
+              title="安全提領（質押）"
+              formula="年提領上限 = 金融資產歷史最高點 × 提領率（預設 4%）"
+              note="只質押原型／債券，不質押正二；現金不能全部來自質押"
+            />
           </div>
           <p className="mt-1.5 text-[0.6875rem] text-slate-300 sm:mt-2 sm:text-xs">
             {blueprint.retirement.note}
@@ -541,6 +565,11 @@ export function RebalancePanel({
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-teal-300" />
             <p className="text-xs font-semibold text-white sm:text-sm">微量動態再平衡</p>
+            <FormulaHint
+              title="微量動態再平衡"
+              formula="今日正二損益 = Σ 持有股數 ×（最新收盤 − 前一日收盤）"
+              note="正數時建議約三分之一轉回現金；收盤價每日自動更新"
+            />
           </div>
           <p className="mt-1.5 text-[0.6875rem] text-slate-300 sm:mt-2 sm:text-xs">
             {blueprint.microRebalance.note}
@@ -594,11 +623,16 @@ export function RebalancePanel({
               : 'border-slate-800 bg-slate-900/60'
         }`}
       >
-        <p className="text-xs font-semibold text-white sm:text-sm">
+        <p className="flex items-center gap-1 text-xs font-semibold text-white sm:text-sm">
           執行層：股權 {formatNumber(plan.equityCurrentWeight, 1)}% · 現金{' '}
           {formatNumber(cashRow?.currentWeight ?? 0, 1)}%
           （目標股權 {formatNumber(plan.equityTargetWeight, 0)}% ±{' '}
           {formatNumber(settings.rebalanceThreshold, 0)}pt）
+          <FormulaHint
+            title="執行層觸發"
+            formula="整體股權超過上限只賣、低於下限只買，區間內可不動作"
+            note={`目前界線 ${formatNumber(plan.equityLowerBound, 0)}%～${formatNumber(plan.equityUpperBound, 0)}%，目標 ${formatNumber(plan.equityTargetWeight, 0)}%`}
+          />
         </p>
         <p className="mt-1 text-[0.6875rem] text-slate-400 sm:text-xs">
           {plan.trigger === 'sell'
@@ -824,45 +858,6 @@ export function RebalancePanel({
           </section>
         </div>
       </details>
-
-      <FormulaCard
-        title="資產配置藍圖的計算方式"
-        items={[
-          {
-            label: '生活費倍數',
-            formula: '生活費倍數 = 總淨值 ÷ 年生活費',
-            note:
-              blueprint.livingExpenseMultiple == null
-                ? '填寫年生活費後即可判定階段'
-                : `目前約 ${formatNumber(blueprint.livingExpenseMultiple, 1)} 倍 → ${blueprint.targets.label}`,
-          },
-          {
-            label: '階段目標配置',
-            formula: '<10×→73｜10–15×→253｜15–20×→343｜≥20×→333/433',
-            note: '現金目標通常維持約 30%，正二與原型隨階段此消彼長',
-          },
-          {
-            label: '下跌加碼',
-            formula: `回撤 ${dipThresholdLabel} → 依序加碼 5%／5%／5% 淨值`,
-            note: '回撤＝（手動設定的加權指數最高點 − 最新收盤）÷ 最高點；三筆合計 15%',
-          },
-          {
-            label: '安全提領（質押）',
-            formula: '年提領上限 = 金融資產歷史最高點 × 提領率（預設 4%）',
-            note: '只質押原型／債券，不質押正二；現金不能全部來自質押',
-          },
-          {
-            label: '微量動態再平衡',
-            formula: '今日正二損益 = Σ 持有股數 ×（最新收盤 − 前一日收盤）',
-            note: '正數時建議約三分之一轉回現金；收盤價每日自動更新',
-          },
-          {
-            label: '執行層觸發',
-            formula: '整體股權超過上限只賣、低於下限只買，區間內可不動作',
-            note: `目前界線 ${formatNumber(plan.equityLowerBound, 0)}%～${formatNumber(plan.equityUpperBound, 0)}%，目標 ${formatNumber(plan.equityTargetWeight, 0)}%`,
-          },
-        ]}
-      />
     </div>
   )
 }

@@ -18,7 +18,7 @@ import type { AllocationSettings, PortfolioRisk } from '../types'
 import type { ExposureResult } from '../utils/exposure'
 import { formatCurrency, formatNumber, formatPercent, pnlClass } from '../utils/calculations'
 import { CHART_FONT_SIZE, chartColor, tooltipStyle } from '../utils/chartColors'
-import { FormulaCard } from './FormulaCard'
+import { FormulaHint } from './FormulaHint'
 
 interface RiskPanelProps {
   risk: PortfolioRisk | null
@@ -161,7 +161,14 @@ export function RiskPanel({
         <>
           <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
-              <p className="text-xs text-slate-400 sm:text-sm">年化報酬（股票部位）</p>
+              <p className="flex items-center gap-1 text-xs text-slate-400 sm:text-sm">
+                年化報酬（股票部位）
+                <FormulaHint
+                  title="日報酬與年化報酬"
+                  formula="日報酬 r = 漲跌價差 ÷ 前一日參考價　年化報酬 = (Π(1+r))^(252/n) − 1"
+                  note="以交易所參考價還原，已排除 ETF 分割並計入配息；以 252 個交易日年化"
+                />
+              </p>
               <p
                 className={`mt-1 text-lg font-bold sm:mt-2 sm:text-2xl ${pnlClass(risk.annualReturn)}`}
               >
@@ -174,6 +181,11 @@ export function RiskPanel({
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
               <p className="flex items-center gap-1.5 text-xs text-slate-400 sm:gap-2 sm:text-sm">
                 <Activity className="h-4 w-4" /> 年化波動度
+                <FormulaHint
+                  title="年化波動度"
+                  formula="年化波動 σ = 日報酬標準差 × √252"
+                  note="波動度是最常用的風險代表值，數字越大代表淨值上下震盪越劇烈"
+                />
               </p>
               <p className="mt-1 text-lg font-bold text-amber-300 sm:mt-2 sm:text-2xl">
                 {formatNumber(risk.annualVolatility, 1)}%
@@ -185,6 +197,11 @@ export function RiskPanel({
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
               <p className="flex items-center gap-1.5 text-xs text-slate-400 sm:gap-2 sm:text-sm">
                 <Shield className="h-4 w-4" /> 夏普值
+                <FormulaHint
+                  title="夏普值（報酬風險平衡）"
+                  formula="夏普值 = (年化報酬 − 無風險利率) ÷ 年化波動"
+                  note="每承擔 1 單位風險換到多少超額報酬；大於 1 通常視為不錯"
+                />
               </p>
               <p className={`mt-1 text-lg font-bold sm:mt-2 sm:text-2xl ${pnlClass(risk.sharpe)}`}>
                 {formatNumber(risk.sharpe, 2)}
@@ -196,6 +213,11 @@ export function RiskPanel({
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
               <p className="flex items-center gap-1.5 text-xs text-slate-400 sm:gap-2 sm:text-sm">
                 <TrendingDown className="h-4 w-4" /> 最大回撤
+                <FormulaHint
+                  title="最大回撤與 VaR"
+                  formula="最大回撤 = min(淨值 ÷ 歷史高點 − 1)　年 95% VaR = 1.645 × σ × 總淨值"
+                  note="VaR 表示常態假設下，一年內有 5% 機率虧損會超過此金額"
+                />
               </p>
               <p className="mt-1 text-lg font-bold text-rose-300 sm:mt-2 sm:text-2xl">
                 -{formatNumber(risk.maxDrawdown, 1)}%
@@ -208,7 +230,14 @@ export function RiskPanel({
 
           <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
-              <p className="text-xs text-slate-400 sm:text-sm">組合 Beta</p>
+              <p className="flex items-center gap-1 text-xs text-slate-400 sm:text-sm">
+                組合 Beta
+                <FormulaHint
+                  title="Beta"
+                  formula="Beta = Cov(個股報酬, 0050 報酬) ÷ Var(0050 報酬)"
+                  note="衡量對大盤的敏感度；正 2 ETF 的 Beta 通常接近 2"
+                />
+              </p>
               <p className="mt-1 text-base font-semibold text-white sm:text-lg">
                 {formatNumber(risk.beta, 2)}
               </p>
@@ -217,7 +246,14 @@ export function RiskPanel({
               </p>
             </div>
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
-              <p className="text-xs text-slate-400 sm:text-sm">年度 95% VaR</p>
+              <p className="flex items-center gap-1 text-xs text-slate-400 sm:text-sm">
+                年度 95% VaR
+                <FormulaHint
+                  title="最大回撤與 VaR"
+                  formula="最大回撤 = min(淨值 ÷ 歷史高點 − 1)　年 95% VaR = 1.645 × σ × 總淨值"
+                  note="VaR 表示常態假設下，一年內有 5% 機率虧損會超過此金額"
+                />
+              </p>
               <p className="mt-1 text-base font-semibold text-rose-300 sm:text-lg">
                 {formatCurrency(risk.var95)}
               </p>
@@ -226,7 +262,14 @@ export function RiskPanel({
               </p>
             </div>
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
-              <p className="text-xs text-slate-400 sm:text-sm">分散效益</p>
+              <p className="flex items-center gap-1 text-xs text-slate-400 sm:text-sm">
+                分散效益
+                <FormulaHint
+                  title="組合波動（含相關性）"
+                  formula="σ_p = √(wᵀ Σ w)，Σ 為年化共變異數矩陣"
+                  note="因為個股不會同步漲跌，組合波動會小於各標的波動的加權平均，差額就是分散效益"
+                />
+              </p>
               <p className="mt-1 text-base font-semibold text-teal-300 sm:text-lg">
                 {formatNumber(risk.diversification, 1)} 個百分點
               </p>
@@ -316,7 +359,14 @@ export function RiskPanel({
 
             <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
               <h3 className="text-sm font-semibold text-white sm:mb-1 sm:text-base">
-                權重 vs 風險貢獻
+                <span className="inline-flex items-center gap-1">
+                  權重 vs 風險貢獻
+                  <FormulaHint
+                    title="風險貢獻"
+                    formula="邊際風險 = (Σw)_i ÷ σ_p　風險貢獻 = w_i × 邊際風險（合計等於 σ_p）"
+                    note="權重不高但風險貢獻很高的標的，就是波動的真正來源"
+                  />
+                </span>
               </h3>
               <p className="mb-2 text-[0.6875rem] text-slate-500 sm:mb-4 sm:text-xs">
                 風險貢獻明顯高於權重的標的，是波動的主要來源
@@ -352,7 +402,16 @@ export function RiskPanel({
 
           <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60">
             <div className="border-b border-slate-800 px-3 py-2 sm:px-4 sm:py-3">
-              <h3 className="text-sm font-semibold text-white sm:text-base">個別標的風險指標</h3>
+              <h3 className="text-sm font-semibold text-white sm:text-base">
+                <span className="inline-flex items-center gap-1">
+                  個別標的風險指標
+                  <FormulaHint
+                    title="槓桿 ETF 的處理"
+                    formula="以市值權重搭配該 ETF 自身的歷史波動計算"
+                    note="正 2 的歷史報酬已含槓桿效果，若再乘倍數會重複計算風險"
+                  />
+                </span>
+              </h3>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full whitespace-nowrap text-left text-xs sm:text-sm">
@@ -365,7 +424,16 @@ export function RiskPanel({
                     <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">夏普值</th>
                     <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">Beta</th>
                     <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">最大回撤</th>
-                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">風險貢獻</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">
+                      <span className="inline-flex items-center justify-end gap-1">
+                        風險貢獻
+                        <FormulaHint
+                          title="風險貢獻"
+                          formula="邊際風險 = (Σw)_i ÷ σ_p　風險貢獻 = w_i × 邊際風險（合計等於 σ_p）"
+                          note="權重不高但風險貢獻很高的標的，就是波動的真正來源"
+                        />
+                      </span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -467,53 +535,6 @@ export function RiskPanel({
           )}
         </>
       )}
-
-      <FormulaCard
-        title="報酬與風險的計算方式"
-        items={[
-          {
-            label: '日報酬與年化報酬',
-            formula:
-              '日報酬 r = 漲跌價差 ÷ 前一日參考價　年化報酬 = (Π(1+r))^(252/n) − 1',
-            note: '以交易所參考價還原，已排除 ETF 分割並計入配息；以 252 個交易日年化',
-          },
-          {
-            label: '年化波動度',
-            formula: '年化波動 σ = 日報酬標準差 × √252',
-            note: '波動度是最常用的風險代表值，數字越大代表淨值上下震盪越劇烈',
-          },
-          {
-            label: '組合波動（含相關性）',
-            formula: 'σ_p = √(wᵀ Σ w)，Σ 為年化共變異數矩陣',
-            note: '因為個股不會同步漲跌，組合波動會小於各標的波動的加權平均，差額就是分散效益',
-          },
-          {
-            label: '夏普值（報酬風險平衡）',
-            formula: '夏普值 = (年化報酬 − 無風險利率) ÷ 年化波動',
-            note: '每承擔 1 單位風險換到多少超額報酬；大於 1 通常視為不錯',
-          },
-          {
-            label: 'Beta',
-            formula: 'Beta = Cov(個股報酬, 0050 報酬) ÷ Var(0050 報酬)',
-            note: '衡量對大盤的敏感度；正 2 ETF 的 Beta 通常接近 2',
-          },
-          {
-            label: '風險貢獻',
-            formula: '邊際風險 = (Σw)_i ÷ σ_p　風險貢獻 = w_i × 邊際風險（合計等於 σ_p）',
-            note: '權重不高但風險貢獻很高的標的，就是波動的真正來源',
-          },
-          {
-            label: '最大回撤與 VaR',
-            formula: '最大回撤 = min(淨值 ÷ 歷史高點 − 1)　年 95% VaR = 1.645 × σ × 總淨值',
-            note: 'VaR 表示常態假設下，一年內有 5% 機率虧損會超過此金額',
-          },
-          {
-            label: '槓桿 ETF 的處理',
-            formula: '以市值權重搭配該 ETF 自身的歷史波動計算',
-            note: '正 2 的歷史報酬已含槓桿效果，若再乘倍數會重複計算風險',
-          },
-        ]}
-      />
     </div>
   )
 }
