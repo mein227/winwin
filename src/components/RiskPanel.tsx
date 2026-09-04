@@ -96,17 +96,17 @@ export function RiskPanel({
   }, [risk])
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+        <div className="flex flex-col gap-2.5 sm:gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h3 className="text-base font-semibold text-white">報酬風險分析</h3>
-            <p className="mt-1 text-sm text-slate-400">
+            <h3 className="text-sm font-semibold text-white sm:text-base">報酬風險分析</h3>
+            <p className="mt-0.5 text-xs text-slate-400 sm:mt-1 sm:text-sm">
               抓取持股歷史收盤價，計算年化報酬、波動度、Beta、最大回撤與風險貢獻
             </p>
           </div>
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="block space-y-1.5">
+          <div className="flex flex-wrap items-end gap-2 sm:gap-3">
+            <label className="block space-y-1 sm:space-y-1.5">
               <span className="text-xs text-slate-400">無風險利率 %</span>
               <input
                 type="number"
@@ -115,10 +115,10 @@ export function RiskPanel({
                 onChange={(e) =>
                   onUpdateSettings({ riskFreeRate: Number(e.target.value) || 0 })
                 }
-                className="w-24 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-teal-500"
+                className="w-20 rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-white outline-none focus:border-teal-500 sm:w-24 sm:py-2"
               />
             </label>
-            <label className="block space-y-1.5">
+            <label className="block space-y-1 sm:space-y-1.5">
               <span className="text-xs text-slate-400">歷史天數</span>
               <input
                 type="number"
@@ -128,14 +128,14 @@ export function RiskPanel({
                 onChange={(e) =>
                   onUpdateSettings({ historyDays: Number(e.target.value) || 365 })
                 }
-                className="w-24 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-teal-500"
+                className="w-20 rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-white outline-none focus:border-teal-500 sm:w-24 sm:py-2"
               />
             </label>
             <button
               type="button"
               onClick={onAnalyze}
               disabled={loading || exposure.items.length === 0}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-4 py-2.5 font-semibold text-slate-950 hover:from-teal-400 hover:to-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 px-3 py-2 text-sm font-semibold text-slate-950 hover:from-teal-400 hover:to-cyan-400 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:py-2.5 sm:text-base"
             >
               {loading ? (
                 <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -147,7 +147,7 @@ export function RiskPanel({
           </div>
         </div>
         {message && (
-          <p className="mt-3 rounded-xl border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-sm text-teal-200">
+          <p className="mt-2 rounded-xl border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-xs text-teal-200 sm:mt-3 sm:px-4 sm:py-2 sm:text-sm">
             {message}
           </p>
         )}
@@ -159,84 +159,88 @@ export function RiskPanel({
         </div>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-              <p className="text-sm text-slate-400">年化報酬（股票部位）</p>
-              <p className={`mt-2 text-2xl font-bold ${pnlClass(risk.annualReturn)}`}>
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+              <p className="text-xs text-slate-400 sm:text-sm">年化報酬（股票部位）</p>
+              <p
+                className={`mt-1 text-lg font-bold sm:mt-2 sm:text-2xl ${pnlClass(risk.annualReturn)}`}
+              >
                 {formatPercent(risk.annualReturn, 1)}
               </p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
                 含現金後 {formatPercent(risk.totalReturn, 1)}
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-              <p className="flex items-center gap-2 text-sm text-slate-400">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+              <p className="flex items-center gap-1.5 text-xs text-slate-400 sm:gap-2 sm:text-sm">
                 <Activity className="h-4 w-4" /> 年化波動度
               </p>
-              <p className="mt-2 text-2xl font-bold text-amber-300">
+              <p className="mt-1 text-lg font-bold text-amber-300 sm:mt-2 sm:text-2xl">
                 {formatNumber(risk.annualVolatility, 1)}%
               </p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
                 含現金後 {formatNumber(risk.totalVolatility, 1)}%
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-              <p className="flex items-center gap-2 text-sm text-slate-400">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+              <p className="flex items-center gap-1.5 text-xs text-slate-400 sm:gap-2 sm:text-sm">
                 <Shield className="h-4 w-4" /> 夏普值
               </p>
-              <p className={`mt-2 text-2xl font-bold ${pnlClass(risk.sharpe)}`}>
+              <p className={`mt-1 text-lg font-bold sm:mt-2 sm:text-2xl ${pnlClass(risk.sharpe)}`}>
                 {formatNumber(risk.sharpe, 2)}
               </p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
                 報酬風險比 {formatNumber(risk.returnRiskRatio, 2)}
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-              <p className="flex items-center gap-2 text-sm text-slate-400">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+              <p className="flex items-center gap-1.5 text-xs text-slate-400 sm:gap-2 sm:text-sm">
                 <TrendingDown className="h-4 w-4" /> 最大回撤
               </p>
-              <p className="mt-2 text-2xl font-bold text-rose-300">
+              <p className="mt-1 text-lg font-bold text-rose-300 sm:mt-2 sm:text-2xl">
                 -{formatNumber(risk.maxDrawdown, 1)}%
               </p>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
                 期間 {risk.startDate} ~ {risk.endDate}
               </p>
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-              <p className="text-sm text-slate-400">組合 Beta</p>
-              <p className="mt-1 text-lg font-semibold text-white">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+              <p className="text-xs text-slate-400 sm:text-sm">組合 Beta</p>
+              <p className="mt-1 text-base font-semibold text-white sm:text-lg">
                 {formatNumber(risk.beta, 2)}
               </p>
-              <p className="text-xs text-slate-500">相對 0050，大於 1 表示比大盤敏感</p>
+              <p className="text-[0.6875rem] text-slate-500 sm:text-xs">
+                相對 0050，大於 1 表示比大盤敏感
+              </p>
             </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-              <p className="text-sm text-slate-400">年度 95% VaR</p>
-              <p className="mt-1 text-lg font-semibold text-rose-300">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+              <p className="text-xs text-slate-400 sm:text-sm">年度 95% VaR</p>
+              <p className="mt-1 text-base font-semibold text-rose-300 sm:text-lg">
                 {formatCurrency(risk.var95)}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-[0.6875rem] text-slate-500 sm:text-xs">
                 約佔淨值 {formatNumber(risk.var95Percent, 1)}%
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-              <p className="text-sm text-slate-400">分散效益</p>
-              <p className="mt-1 text-lg font-semibold text-teal-300">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+              <p className="text-xs text-slate-400 sm:text-sm">分散效益</p>
+              <p className="mt-1 text-base font-semibold text-teal-300 sm:text-lg">
                 {formatNumber(risk.diversification, 1)} 個百分點
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-[0.6875rem] text-slate-500 sm:text-xs">
                 加權平均波動 {formatNumber(risk.weightedVolatility, 1)}% → 組合{' '}
                 {formatNumber(risk.annualVolatility, 1)}%
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-              <p className="text-sm text-slate-400">基準（0050）</p>
-              <p className="mt-1 text-lg font-semibold text-white">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+              <p className="text-xs text-slate-400 sm:text-sm">基準（0050）</p>
+              <p className="mt-1 text-base font-semibold text-white sm:text-lg">
                 {risk.benchmark ? formatPercent(risk.benchmark.annualReturn, 1) : '—'}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-[0.6875rem] text-slate-500 sm:text-xs">
                 {risk.benchmark
                   ? `波動 ${formatNumber(risk.benchmark.annualVolatility, 1)}%／回撤 -${formatNumber(risk.benchmark.maxDrawdown, 1)}%`
                   : '無基準資料'}
@@ -245,18 +249,20 @@ export function RiskPanel({
           </div>
 
           {risk.missing.length > 0 && (
-            <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
+            <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-200 sm:px-4 sm:py-2 sm:text-sm">
               {risk.missing.join('、')} 缺少足夠歷史資料，未納入計算
             </p>
           )}
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
-              <h3 className="mb-1 text-base font-semibold text-white">風險報酬分布</h3>
-              <p className="mb-4 text-xs text-slate-500">
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+              <h3 className="text-sm font-semibold text-white sm:mb-1 sm:text-base">
+                風險報酬分布
+              </h3>
+              <p className="mb-2 text-[0.6875rem] text-slate-500 sm:mb-4 sm:text-xs">
                 越靠左上方越好（低波動、高報酬）
               </p>
-              <div className="h-72">
+              <div className="h-56 sm:h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -308,12 +314,14 @@ export function RiskPanel({
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
-              <h3 className="mb-1 text-base font-semibold text-white">權重 vs 風險貢獻</h3>
-              <p className="mb-4 text-xs text-slate-500">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+              <h3 className="text-sm font-semibold text-white sm:mb-1 sm:text-base">
+                權重 vs 風險貢獻
+              </h3>
+              <p className="mb-2 text-[0.6875rem] text-slate-500 sm:mb-4 sm:text-xs">
                 風險貢獻明顯高於權重的標的，是波動的主要來源
               </p>
-              <div className="h-72">
+              <div className="h-56 sm:h-72">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={contributionData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -343,21 +351,21 @@ export function RiskPanel({
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60">
-            <div className="border-b border-slate-800 px-4 py-3">
-              <h3 className="font-semibold text-white">個別標的風險指標</h3>
+            <div className="border-b border-slate-800 px-3 py-2 sm:px-4 sm:py-3">
+              <h3 className="text-sm font-semibold text-white sm:text-base">個別標的風險指標</h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
+              <table className="min-w-full text-left text-xs sm:text-sm">
                 <thead className="border-b border-slate-800 bg-slate-950/60 text-slate-400">
                   <tr>
-                    <th className="px-4 py-3 font-medium">標的</th>
-                    <th className="px-4 py-3 font-medium text-right">權重</th>
-                    <th className="px-4 py-3 font-medium text-right">年化報酬</th>
-                    <th className="px-4 py-3 font-medium text-right">年化波動</th>
-                    <th className="px-4 py-3 font-medium text-right">夏普值</th>
-                    <th className="px-4 py-3 font-medium text-right">Beta</th>
-                    <th className="px-4 py-3 font-medium text-right">最大回撤</th>
-                    <th className="px-4 py-3 font-medium text-right">風險貢獻</th>
+                    <th className="px-2 py-2 font-medium sm:px-4 sm:py-3">標的</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">權重</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">年化報酬</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">年化波動</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">夏普值</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">Beta</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">最大回撤</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">風險貢獻</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -366,29 +374,35 @@ export function RiskPanel({
                       key={asset.symbol}
                       className="border-b border-slate-800/70 last:border-0 hover:bg-slate-800/30"
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-2 py-2 sm:px-4 sm:py-3">
                         <div className="font-medium text-white">{asset.symbol}</div>
-                        <div className="text-xs text-slate-500">{asset.name}</div>
+                        <div className="text-[0.6875rem] text-slate-500 sm:text-xs">
+                          {asset.name}
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-200">
+                      <td className="px-2 py-2 text-right text-slate-200 sm:px-4 sm:py-3">
                         {formatNumber(asset.weight, 1)}%
                       </td>
-                      <td className={`px-4 py-3 text-right ${pnlClass(asset.annualReturn)}`}>
+                      <td
+                        className={`px-2 py-2 text-right sm:px-4 sm:py-3 ${pnlClass(asset.annualReturn)}`}
+                      >
                         {formatPercent(asset.annualReturn, 1)}
                       </td>
-                      <td className="px-4 py-3 text-right text-amber-200">
+                      <td className="px-2 py-2 text-right text-amber-200 sm:px-4 sm:py-3">
                         {formatNumber(asset.annualVolatility, 1)}%
                       </td>
-                      <td className={`px-4 py-3 text-right ${pnlClass(asset.sharpe)}`}>
+                      <td
+                        className={`px-2 py-2 text-right sm:px-4 sm:py-3 ${pnlClass(asset.sharpe)}`}
+                      >
                         {formatNumber(asset.sharpe, 2)}
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-300">
+                      <td className="px-2 py-2 text-right text-slate-300 sm:px-4 sm:py-3">
                         {formatNumber(asset.beta, 2)}
                       </td>
-                      <td className="px-4 py-3 text-right text-rose-300">
+                      <td className="px-2 py-2 text-right text-rose-300 sm:px-4 sm:py-3">
                         -{formatNumber(asset.maxDrawdown, 1)}%
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold text-slate-200">
+                      <td className="px-2 py-2 text-right font-semibold text-slate-200 sm:px-4 sm:py-3">
                         {formatNumber(asset.riskContribution, 1)}%
                       </td>
                     </tr>
@@ -399,43 +413,49 @@ export function RiskPanel({
           </div>
 
           {parityCompare.length > 0 && (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
-              <h3 className="text-base font-semibold text-white">風險平價建議權重</h3>
-              <p className="mt-1 text-xs text-slate-500">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+              <h3 className="text-sm font-semibold text-white sm:text-base">風險平價建議權重</h3>
+              <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
                 以「權重與波動度成反比」配置，讓每檔標的貢獻相近的風險；配置比例也可到「資產配置藍圖」依生活費倍數套用。
                 此方法只看波動不看報酬，債券等低波動標的權重會偏高，請搭配自己的預期報酬調整
               </p>
-              <div className="mt-4 space-y-3">
+              <div className="mt-2 space-y-2 sm:mt-4 sm:space-y-3">
                 {parityCompare.map((item) => (
-                  <div key={item.symbol} className="flex items-center gap-3">
-                    <div className="w-28 shrink-0">
-                      <p className="text-sm font-medium text-white">{item.symbol}</p>
-                      <p className="text-xs text-slate-500">
+                  <div key={item.symbol} className="flex items-center gap-2 sm:gap-3">
+                    <div className="w-20 shrink-0 sm:w-28">
+                      <p className="truncate text-xs font-medium text-white sm:text-sm">
+                        {item.symbol}
+                      </p>
+                      <p className="text-[0.6875rem] text-slate-500 sm:text-xs">
                         σ {formatNumber(item.volatility, 1)}%
                       </p>
                     </div>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="w-10 text-xs text-slate-500">目前</span>
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <span className="w-8 text-[0.6875rem] text-slate-500 sm:w-10 sm:text-xs">
+                          目前
+                        </span>
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800 sm:h-2">
                           <div
                             className="h-full rounded-full bg-sky-400"
                             style={{ width: `${Math.min(item.current, 100)}%` }}
                           />
                         </div>
-                        <span className="w-14 text-right text-xs text-slate-300">
+                        <span className="w-11 text-right text-[0.6875rem] text-slate-300 sm:w-14 sm:text-xs">
                           {formatNumber(item.current, 1)}%
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-10 text-xs text-slate-500">建議</span>
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <span className="w-8 text-[0.6875rem] text-slate-500 sm:w-10 sm:text-xs">
+                          建議
+                        </span>
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800 sm:h-2">
                           <div
                             className="h-full rounded-full bg-teal-400"
                             style={{ width: `${Math.min(item.suggested, 100)}%` }}
                           />
                         </div>
-                        <span className="w-14 text-right text-xs text-teal-300">
+                        <span className="w-11 text-right text-[0.6875rem] text-teal-300 sm:w-14 sm:text-xs">
                           {formatNumber(item.suggested, 1)}%
                         </span>
                       </div>

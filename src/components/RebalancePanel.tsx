@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Bar,
   BarChart,
@@ -12,12 +12,14 @@ import {
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   Info,
   Landmark,
   LoaderCircle,
   Map,
   RefreshCw,
   Shield,
+  Sliders,
   Sparkles,
   Target,
   TrendingDown,
@@ -98,6 +100,10 @@ export function RebalancePanel({
   onUpdateSettings,
 }: RebalancePanelProps) {
   const market = useBlueprintMarketData(holdings, exposure)
+  // 參數平常不會天天改，手機先收起來，桌機維持展開
+  const [settingsOpen, setSettingsOpen] = useState(
+    () => typeof window === 'undefined' || window.innerWidth >= 640,
+  )
   const blueprint = useMemo(
     () =>
       analyzeBlueprint(exposure, settings, {
@@ -176,7 +182,7 @@ export function RebalancePanel({
     hint?: string,
     opts?: { step?: string; min?: number; max?: number },
   ) => (
-    <label className="block space-y-1.5">
+    <label className="block space-y-1">
       <span className="text-xs text-slate-400">{label}</span>
       <input
         type="number"
@@ -186,167 +192,189 @@ export function RebalancePanel({
         value={value || ''}
         placeholder="0"
         onChange={(event) => onChange(Number(event.target.value) || 0)}
-        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-teal-500"
+        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-white outline-none focus:border-teal-500 sm:py-2.5"
       />
       {hint && <p className="text-[0.6875rem] text-slate-500">{hint}</p>}
     </label>
   )
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-teal-500/20 bg-gradient-to-br from-slate-900/90 via-slate-900/70 to-teal-950/30 p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="rounded-2xl border border-teal-500/20 bg-gradient-to-br from-slate-900/90 via-slate-900/70 to-teal-950/30 p-3 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-2 sm:gap-3">
           <div>
             <div className="flex items-center gap-2 text-teal-300">
               <Map className="h-4 w-4" />
               <p className="text-xs font-semibold tracking-wide">正二與現金共生</p>
             </div>
-            <h3 className="mt-1 text-lg font-semibold text-white">資產配置藍圖</h3>
-            <p className="mt-1 max-w-2xl text-sm text-slate-400">
+            <h3 className="mt-0.5 text-base font-semibold text-white sm:mt-1 sm:text-lg">
+              資產配置藍圖
+            </h3>
+            <p className="mt-0.5 max-w-2xl text-xs text-slate-400 sm:mt-1 sm:text-sm">
               依「生活費倍數」動態調整正二／原型／現金比例，保留三成防禦現金，並在退休期以質押原型創造現金流。
             </p>
           </div>
           <button
             type="button"
             onClick={applyBlueprint}
-            className="inline-flex items-center gap-2 rounded-xl border border-teal-400/40 bg-teal-500/20 px-4 py-2.5 text-sm font-semibold text-teal-100 transition hover:bg-teal-500/30"
+            className="inline-flex items-center gap-2 rounded-xl border border-teal-400/40 bg-teal-500/20 px-3 py-2 text-xs font-semibold text-teal-100 transition hover:bg-teal-500/30 sm:px-4 sm:py-2.5 sm:text-sm"
           >
             <Sparkles className="h-4 w-4" />
             套用本階段目標（{blueprint.targets.label}）
           </button>
         </div>
 
-        <div className="mt-5 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-          {numberField(
-            '年生活費（元）',
-            settings.blueprintAnnualLivingExpense,
-            (next) => onUpdateSettings({ blueprintAnnualLivingExpense: next }),
-            '用來計算資產是生活費的幾倍，決定 73／253／343／333 階段',
-          )}
-          {numberField(
-            '金融資產歷史最高點（元）',
-            settings.blueprintPeakNetWorth,
-            (next) => onUpdateSettings({ blueprintPeakNetWorth: next }),
-            '退休提領上限以此計算；可先填目前淨值，之後再更新真正高點',
-          )}
-          {numberField(
-            '加權指數歷史最高點',
-            settings.blueprintMarketPeak,
-            (next) => onUpdateSettings({ blueprintMarketPeak: Math.max(next, 0) }),
-            '手動輸入並在創高後更新；系統會以加權指數最新收盤自動計算回撤',
-            { step: '0.01', min: 0 },
-          )}
-          <div className="space-y-1.5">
-            <span className="text-xs text-slate-400">下跌加碼門檻（% 回撤）</span>
-            <div className="grid grid-cols-3 gap-2">
-              {([0, 1, 2] as const).map((index) => (
-                <label key={index} className="block space-y-1">
-                  <span className="text-[0.6875rem] text-slate-500">第 {index + 1} 筆</span>
-                  <input
-                    type="number"
-                    step="1"
-                    min={0}
-                    max={100}
-                    value={dipThresholds[index] || ''}
-                    placeholder="0"
-                    onChange={(event) =>
-                      updateDipThreshold(index, Number(event.target.value) || 0)
-                    }
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-teal-500"
-                  />
-                </label>
-              ))}
-            </div>
-            <p className="text-[0.6875rem] text-slate-500">
-              預設 10／20／30；加權指數自高點回撤達各門檻時，依序分批加碼
-            </p>
-          </div>
-          {numberField(
-            '每年安全提領上限（%）',
-            settings.blueprintWithdrawalRate,
-            (next) =>
-              onUpdateSettings({
-                blueprintWithdrawalRate: Math.min(Math.max(next, 0), 10),
-              }),
-            '預設 4%；保守者可設 2%',
-            { step: '0.5', min: 0, max: 10 },
-          )}
-          <div className="space-y-1.5">
-            <span className="text-xs text-slate-400">自動行情</span>
-            <div className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm text-white">
-                    加權指數收盤：
-                    {market.indexQuote ? formatNumber(market.indexQuote.price, 2) : '—'}
-                  </p>
-                  <p className={`mt-1 text-xs ${pnlClass(market.leveragedDailyGain ?? 0)}`}>
-                    今日正二損益：
-                    {market.leveragedDailyGain == null
-                      ? '—'
-                      : formatCurrency(market.leveragedDailyGain)}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={market.refresh}
-                  disabled={market.loading}
-                  title="更新最新收盤價"
-                  className="rounded-lg border border-slate-700 p-2 text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
-                >
-                  {market.loading ? (
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4" />
-                  )}
-                </button>
+        <button
+          type="button"
+          onClick={() => setSettingsOpen((prev) => !prev)}
+          className="mt-3 flex w-full items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-left text-xs font-semibold text-slate-300 transition hover:bg-slate-800/40 sm:mt-4 sm:text-sm"
+        >
+          <span className="flex items-center gap-2">
+            <Sliders className="h-4 w-4 text-teal-300" />
+            藍圖參數設定
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 text-slate-500 transition ${settingsOpen ? 'rotate-180' : ''}`}
+          />
+        </button>
+
+        {settingsOpen && (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+            {numberField(
+              '年生活費（元）',
+              settings.blueprintAnnualLivingExpense,
+              (next) => onUpdateSettings({ blueprintAnnualLivingExpense: next }),
+              '用來計算資產是生活費的幾倍，決定 73／253／343／333 階段',
+            )}
+            {numberField(
+              '金融資產歷史最高點（元）',
+              settings.blueprintPeakNetWorth,
+              (next) => onUpdateSettings({ blueprintPeakNetWorth: next }),
+              '退休提領上限以此計算；可先填目前淨值，之後再更新真正高點',
+            )}
+            {numberField(
+              '加權指數歷史最高點',
+              settings.blueprintMarketPeak,
+              (next) => onUpdateSettings({ blueprintMarketPeak: Math.max(next, 0) }),
+              '手動輸入並在創高後更新；系統會以加權指數最新收盤自動計算回撤',
+              { step: '0.01', min: 0 },
+            )}
+            <div className="space-y-1.5">
+              <span className="text-xs text-slate-400">下跌加碼門檻（% 回撤）</span>
+              <div className="grid grid-cols-3 gap-2">
+                {([0, 1, 2] as const).map((index) => (
+                  <label key={index} className="block space-y-1">
+                    <span className="text-[0.6875rem] text-slate-500">第 {index + 1} 筆</span>
+                    <input
+                      type="number"
+                      step="1"
+                      min={0}
+                      max={100}
+                      value={dipThresholds[index] || ''}
+                      placeholder="0"
+                      onChange={(event) =>
+                        updateDipThreshold(index, Number(event.target.value) || 0)
+                      }
+                      className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-white outline-none focus:border-teal-500 sm:py-2.5"
+                    />
+                  </label>
+                ))}
               </div>
+              <p className="text-[0.6875rem] text-slate-500">
+                預設 10／20／30；加權指數自高點回撤達各門檻時，依序分批加碼
+              </p>
             </div>
-            <p className="text-[0.6875rem] text-slate-500">
-              {market.message ||
-                (market.indexQuote
-                  ? `${market.indexQuote.date} 收盤；正二損益＝持有股數 × 當日價差`
-                  : '正在取得最新收盤價')}
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            <span className="text-xs text-slate-400">退休期偏好配置</span>
-            <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-950 p-1">
-              {retirementOptions.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => onUpdateSettings({ blueprintRetirementPreset: option.id })}
-                  className={`rounded-lg py-2 text-sm font-semibold transition ${
-                    settings.blueprintRetirementPreset === option.id
-                      ? 'bg-teal-500/20 text-teal-200'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
+            {numberField(
+              '每年安全提領上限（%）',
+              settings.blueprintWithdrawalRate,
+              (next) =>
+                onUpdateSettings({
+                  blueprintWithdrawalRate: Math.min(Math.max(next, 0), 10),
+                }),
+              '預設 4%；保守者可設 2%',
+              { step: '0.5', min: 0, max: 10 },
+            )}
+            <div className="space-y-1.5">
+              <span className="text-xs text-slate-400">自動行情</span>
+              <div className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-white">
+                      加權指數收盤：
+                      {market.indexQuote ? formatNumber(market.indexQuote.price, 2) : '—'}
+                    </p>
+                    <p className={`mt-1 text-xs ${pnlClass(market.leveragedDailyGain ?? 0)}`}>
+                      今日正二損益：
+                      {market.leveragedDailyGain == null
+                        ? '—'
+                        : formatCurrency(market.leveragedDailyGain)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={market.refresh}
+                    disabled={market.loading}
+                    title="更新最新收盤價"
+                    className="rounded-lg border border-slate-700 p-2 text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    {market.loading ? (
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              <p className="text-[0.6875rem] text-slate-500">
+                {market.message ||
+                  (market.indexQuote
+                    ? `${market.indexQuote.date} 收盤；正二損益＝持有股數 × 當日價差`
+                    : '正在取得最新收盤價')}
+              </p>
             </div>
-            <p className="text-[0.6875rem] text-slate-500">
-              {
-                retirementOptions.find(
-                  (option) => option.id === settings.blueprintRetirementPreset,
-                )?.hint
-              }
-            </p>
+            <div className="space-y-1.5">
+              <span className="text-xs text-slate-400">退休期偏好配置</span>
+              <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-950 p-1">
+                {retirementOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => onUpdateSettings({ blueprintRetirementPreset: option.id })}
+                    className={`rounded-lg py-2 text-sm font-semibold transition ${
+                      settings.blueprintRetirementPreset === option.id
+                        ? 'bg-teal-500/20 text-teal-200'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[0.6875rem] text-slate-500">
+                {
+                  retirementOptions.find(
+                    (option) => option.id === settings.blueprintRetirementPreset,
+                  )?.hint
+                }
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="flex items-center gap-2 text-slate-400">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-3">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+          <div className="flex items-center gap-1.5 text-slate-400 sm:gap-2">
             <Target className="h-4 w-4 text-teal-300" />
-            <p className="text-sm">目前階段</p>
+            <p className="text-xs sm:text-sm">目前階段</p>
           </div>
-          <p className="mt-2 text-xl font-bold text-white">{blueprint.stageLabel}</p>
-          <p className="mt-2 text-xs text-slate-400">{blueprint.stageHint}</p>
-          <p className="mt-3 text-sm text-slate-300">
+          <p className="mt-1 text-base font-bold text-white sm:mt-2 sm:text-xl">
+            {blueprint.stageLabel}
+          </p>
+          <p className="mt-1 text-[0.6875rem] text-slate-400 sm:mt-2 sm:text-xs">
+            {blueprint.stageHint}
+          </p>
+          <p className="mt-2 text-xs text-slate-300 sm:mt-3 sm:text-sm">
             生活費倍數：{' '}
             <span className="font-semibold text-teal-200">
               {blueprint.livingExpenseMultiple == null
@@ -354,46 +382,50 @@ export function RebalancePanel({
                 : `${formatNumber(blueprint.livingExpenseMultiple, 1)} 倍`}
             </span>
           </p>
-          <p className="mt-1 text-sm text-slate-300">
+          <p className="mt-0.5 text-xs text-slate-300 sm:mt-1 sm:text-sm">
             總淨值 {formatCurrency(exposure.summary.netWorth)}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="flex items-center gap-2 text-slate-400">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+          <div className="flex items-center gap-1.5 text-slate-400 sm:gap-2">
             <Shield className="h-4 w-4 text-sky-300" />
-            <p className="text-sm">本階段目標</p>
+            <p className="text-xs sm:text-sm">本階段目標</p>
           </div>
-          <p className="mt-2 text-xl font-bold text-sky-200">{blueprint.targets.label}</p>
-          <p className="mt-2 text-xs text-slate-400">{blueprint.targets.description}</p>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-            <div className="rounded-lg bg-slate-950/80 px-2 py-2">
+          <p className="mt-1 text-base font-bold text-sky-200 sm:mt-2 sm:text-xl">
+            {blueprint.targets.label}
+          </p>
+          <p className="mt-1 text-[0.6875rem] text-slate-400 sm:mt-2 sm:text-xs">
+            {blueprint.targets.description}
+          </p>
+          <div className="mt-2 grid grid-cols-3 gap-1.5 text-center text-[0.6875rem] sm:mt-3 sm:gap-2 sm:text-xs">
+            <div className="rounded-lg bg-slate-950/80 px-1.5 py-1.5 sm:px-2 sm:py-2">
               <p className="text-slate-500">正二</p>
-              <p className="mt-1 font-semibold text-white">
+              <p className="mt-0.5 font-semibold text-white sm:mt-1">
                 {formatNumber(blueprint.targets.leveraged, 1)}%
               </p>
             </div>
-            <div className="rounded-lg bg-slate-950/80 px-2 py-2">
+            <div className="rounded-lg bg-slate-950/80 px-1.5 py-1.5 sm:px-2 sm:py-2">
               <p className="text-slate-500">原型</p>
-              <p className="mt-1 font-semibold text-white">
+              <p className="mt-0.5 font-semibold text-white sm:mt-1">
                 {formatNumber(blueprint.targets.prototype, 1)}%
               </p>
             </div>
-            <div className="rounded-lg bg-slate-950/80 px-2 py-2">
+            <div className="rounded-lg bg-slate-950/80 px-1.5 py-1.5 sm:px-2 sm:py-2">
               <p className="text-slate-500">現金</p>
-              <p className="mt-1 font-semibold text-white">
+              <p className="mt-0.5 font-semibold text-white sm:mt-1">
                 {formatNumber(blueprint.targets.cash, 1)}%
               </p>
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <div className="flex items-center gap-2 text-slate-400">
+        <div className="col-span-2 rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4 lg:col-span-1">
+          <div className="flex items-center gap-1.5 text-slate-400 sm:gap-2">
             <Wallet className="h-4 w-4 text-amber-300" />
-            <p className="text-sm">現況對照</p>
+            <p className="text-xs sm:text-sm">現況對照</p>
           </div>
-          <div className="mt-3 space-y-2 text-sm">
+          <div className="mt-2 space-y-1.5 text-xs sm:mt-3 sm:space-y-2 sm:text-sm">
             <WeightLine
               label="正二"
               current={blueprint.current.leveraged}
@@ -418,24 +450,26 @@ export function RebalancePanel({
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
-        <h3 className="text-base font-semibold text-white">現階段該做什麼</h3>
-        <p className="mt-1 text-sm text-slate-400">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+        <h3 className="text-sm font-semibold text-white sm:text-base">現階段該做什麼</h3>
+        <p className="mt-0.5 text-xs text-slate-400 sm:mt-1 sm:text-sm">
           依你填寫的生活費、加權指數最高點與目前持股，自動排出優先動作。
         </p>
-        <div className="mt-4 space-y-3">
+        <div className="mt-2 space-y-2 sm:mt-4 sm:space-y-3">
           {blueprint.actions.map((action) => {
             const style = severityStyle[action.severity]
             const Icon = style.icon
             return (
               <div
                 key={action.id}
-                className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${style.wrap}`}
+                className={`flex items-start gap-2.5 rounded-xl border px-3 py-2 sm:gap-3 sm:px-4 sm:py-3 ${style.wrap}`}
               >
                 <Icon className="mt-0.5 h-4 w-4 shrink-0" />
                 <div>
-                  <p className="text-sm font-semibold">{action.title}</p>
-                  <p className="mt-1 text-xs opacity-90">{action.detail}</p>
+                  <p className="text-xs font-semibold sm:text-sm">{action.title}</p>
+                  <p className="mt-0.5 text-[0.6875rem] opacity-90 sm:mt-1 sm:text-xs">
+                    {action.detail}
+                  </p>
                 </div>
               </div>
             )
@@ -443,9 +477,9 @@ export function RebalancePanel({
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-2.5 sm:gap-4 lg:grid-cols-3">
         <div
-          className={`rounded-2xl border p-4 ${
+          className={`rounded-2xl border p-3 sm:p-4 ${
             blueprint.dipBuy.eligible
               ? 'border-rose-500/30 bg-rose-500/10'
               : 'border-slate-800 bg-slate-900/60'
@@ -453,10 +487,12 @@ export function RebalancePanel({
         >
           <div className="flex items-center gap-2">
             <TrendingDown className="h-4 w-4 text-rose-300" />
-            <p className="text-sm font-semibold text-white">下跌加碼</p>
+            <p className="text-xs font-semibold text-white sm:text-sm">下跌加碼</p>
           </div>
-          <p className="mt-2 text-xs text-slate-300">{blueprint.dipBuy.note}</p>
-          <div className="mt-3 space-y-1 text-xs text-slate-400">
+          <p className="mt-1.5 text-[0.6875rem] text-slate-300 sm:mt-2 sm:text-xs">
+            {blueprint.dipBuy.note}
+          </p>
+          <div className="mt-1.5 space-y-1 text-[0.6875rem] text-slate-400 sm:mt-3 sm:text-xs">
             <p>
               最高 {blueprint.dipBuy.marketPeak > 0
                 ? formatNumber(blueprint.dipBuy.marketPeak, 2)
@@ -480,7 +516,7 @@ export function RebalancePanel({
         </div>
 
         <div
-          className={`rounded-2xl border p-4 ${
+          className={`rounded-2xl border p-3 sm:p-4 ${
             blueprint.retirement.eligible
               ? 'border-amber-500/30 bg-amber-500/10'
               : 'border-slate-800 bg-slate-900/60'
@@ -488,34 +524,40 @@ export function RebalancePanel({
         >
           <div className="flex items-center gap-2">
             <Landmark className="h-4 w-4 text-amber-300" />
-            <p className="text-sm font-semibold text-white">質押退休現金流</p>
+            <p className="text-xs font-semibold text-white sm:text-sm">質押退休現金流</p>
           </div>
-          <p className="mt-2 text-xs text-slate-300">{blueprint.retirement.note}</p>
+          <p className="mt-1.5 text-[0.6875rem] text-slate-300 sm:mt-2 sm:text-xs">
+            {blueprint.retirement.note}
+          </p>
           {blueprint.retirement.eligible && blueprint.retirement.maxAnnualWithdrawal > 0 && (
-            <p className="mt-3 text-sm text-amber-100">
+            <p className="mt-1.5 text-xs text-amber-100 sm:mt-3 sm:text-sm">
               約 {formatCurrency(blueprint.retirement.suggestedMonthly)}／月
               （年 {formatCurrency(blueprint.retirement.maxAnnualWithdrawal)}）
             </p>
           )}
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-teal-300" />
-            <p className="text-sm font-semibold text-white">微量動態再平衡</p>
+            <p className="text-xs font-semibold text-white sm:text-sm">微量動態再平衡</p>
           </div>
-          <p className="mt-2 text-xs text-slate-300">{blueprint.microRebalance.note}</p>
+          <p className="mt-1.5 text-[0.6875rem] text-slate-300 sm:mt-2 sm:text-xs">
+            {blueprint.microRebalance.note}
+          </p>
           {blueprint.microRebalance.trimAmount > 0 && (
-            <p className="mt-3 text-sm text-teal-100">
+            <p className="mt-1.5 text-xs text-teal-100 sm:mt-3 sm:text-sm">
               建議轉回現金 {formatCurrency(blueprint.microRebalance.trimAmount)}
             </p>
           )}
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
-        <h3 className="mb-4 text-base font-semibold text-white">藍圖桶：目前 vs 目標</h3>
-        <div className="h-72">
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+        <h3 className="mb-2 text-sm font-semibold text-white sm:mb-4 sm:text-base">
+          藍圖桶：目前 vs 目標
+        </h3>
+        <div className="h-56 sm:h-72">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={compareChart}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -544,7 +586,7 @@ export function RebalancePanel({
       </div>
 
       <div
-        className={`rounded-2xl border px-4 py-3 ${
+        className={`rounded-2xl border px-3 py-2.5 sm:px-4 sm:py-3 ${
           plan.trigger === 'sell'
             ? 'border-rose-500/30 bg-rose-500/10'
             : plan.trigger === 'buy'
@@ -552,13 +594,13 @@ export function RebalancePanel({
               : 'border-slate-800 bg-slate-900/60'
         }`}
       >
-        <p className="text-sm font-semibold text-white">
+        <p className="text-xs font-semibold text-white sm:text-sm">
           執行層：股權 {formatNumber(plan.equityCurrentWeight, 1)}% · 現金{' '}
           {formatNumber(cashRow?.currentWeight ?? 0, 1)}%
           （目標股權 {formatNumber(plan.equityTargetWeight, 0)}% ±{' '}
           {formatNumber(settings.rebalanceThreshold, 0)}pt）
         </p>
-        <p className="mt-1 text-xs text-slate-400">
+        <p className="mt-1 text-[0.6875rem] text-slate-400 sm:text-xs">
           {plan.trigger === 'sell'
             ? `已達停利線，建議賣出 ${formatCurrency(plan.totalSell)}，將現金拉回約 ${formatNumber(settings.cashTargetWeight, 0)}%。`
             : plan.trigger === 'buy'
@@ -569,56 +611,60 @@ export function RebalancePanel({
 
       {hasTargets && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-              <p className="text-sm text-slate-400">需買進</p>
-              <p className="mt-2 text-xl font-bold text-emerald-300">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+              <p className="text-xs text-slate-400 sm:text-sm">需買進</p>
+              <p className="mt-1 text-base font-bold text-emerald-300 sm:mt-2 sm:text-xl">
                 {formatCurrency(plan.totalBuy)}
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-              <p className="text-sm text-slate-400">需賣出</p>
-              <p className="mt-2 text-xl font-bold text-rose-300">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+              <p className="text-xs text-slate-400 sm:text-sm">需賣出</p>
+              <p className="mt-1 text-base font-bold text-rose-300 sm:mt-2 sm:text-xl">
                 {formatCurrency(plan.totalSell)}
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-              <p className="text-sm text-slate-400">預估手續費＋稅</p>
-              <p className="mt-2 text-xl font-bold text-amber-300">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+              <p className="text-xs text-slate-400 sm:text-sm">預估手續費＋稅</p>
+              <p className="mt-1 text-base font-bold text-amber-300 sm:mt-2 sm:text-xl">
                 {formatCurrency(plan.totalCost)}
               </p>
             </div>
             <div
-              className={`rounded-2xl border p-4 ${
+              className={`rounded-2xl border p-3 sm:p-4 ${
                 plan.cashAfter < 0
                   ? 'border-rose-500/40 bg-rose-500/10'
                   : 'border-slate-800 bg-slate-900/60'
               }`}
             >
-              <p className="text-sm text-slate-400">執行後現金</p>
-              <p className={`mt-2 text-xl font-bold ${pnlClass(plan.cashAfter)}`}>
+              <p className="text-xs text-slate-400 sm:text-sm">執行後現金</p>
+              <p
+                className={`mt-1 text-base font-bold sm:mt-2 sm:text-xl ${pnlClass(plan.cashAfter)}`}
+              >
                 {formatCurrency(plan.cashAfter)}
               </p>
             </div>
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60">
-            <div className="flex flex-col gap-1 border-b border-slate-800 px-4 py-3">
-              <h3 className="font-semibold text-white">標的調整建議</h3>
-              <p className="text-xs text-slate-500">
+            <div className="flex flex-col gap-0.5 border-b border-slate-800 px-3 py-2 sm:gap-1 sm:px-4 sm:py-3">
+              <h3 className="text-sm font-semibold text-white sm:text-base">標的調整建議</h3>
+              <p className="text-[0.6875rem] text-slate-500 sm:text-xs">
                 套用藍圖後，這裡會依股權／現金偏離給出買賣金額；也可手動微調目標權重。
               </p>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
+              <table className="min-w-full text-left text-xs sm:text-sm">
                 <thead className="border-b border-slate-800 bg-slate-950/60 text-slate-400">
                   <tr>
-                    <th className="px-4 py-3 font-medium">標的</th>
-                    <th className="px-4 py-3 font-medium text-right">目前權重</th>
-                    <th className="px-4 py-3 font-medium text-right">目標權重 %</th>
-                    <th className="px-4 py-3 font-medium text-right">偏離</th>
-                    <th className="px-4 py-3 font-medium text-right">調整金額</th>
-                    <th className="px-4 py-3 font-medium text-right">建議</th>
+                    <th className="px-2 py-2 font-medium sm:px-4 sm:py-3">標的</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">目前權重</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">
+                      目標權重 %
+                    </th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">偏離</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">調整金額</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">建議</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -627,17 +673,17 @@ export function RebalancePanel({
                       key={row.key}
                       className="border-b border-slate-800/70 last:border-0 hover:bg-slate-800/30"
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-2 py-2 sm:px-4 sm:py-3">
                         <div className="font-medium text-white">{row.symbol}</div>
-                        <div className="text-xs text-slate-500">
+                        <div className="text-[0.6875rem] text-slate-500 sm:text-xs">
                           {row.name}
                           {row.leverage !== 1 && ` · ${formatNumber(row.leverage, 1)}x`}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-200">
+                      <td className="px-2 py-2 text-right text-slate-200 sm:px-4 sm:py-3">
                         {formatNumber(row.currentWeight, 1)}%
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-2 py-2 text-right sm:px-4 sm:py-3">
                         <input
                           type="number"
                           step="any"
@@ -654,15 +700,19 @@ export function RebalancePanel({
                           className="w-20 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-right text-slate-200 outline-none focus:border-teal-500"
                         />
                       </td>
-                      <td className={`px-4 py-3 text-right ${pnlClass(row.diffWeight)}`}>
+                      <td
+                        className={`px-2 py-2 text-right sm:px-4 sm:py-3 ${pnlClass(row.diffWeight)}`}
+                      >
                         {formatPercent(row.diffWeight, 1)}
                       </td>
-                      <td className={`px-4 py-3 text-right ${pnlClass(row.tradeValue)}`}>
+                      <td
+                        className={`px-2 py-2 text-right sm:px-4 sm:py-3 ${pnlClass(row.tradeValue)}`}
+                      >
                         {row.action === 'hold' ? '—' : formatCurrency(row.tradeValue)}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-2 py-2 text-right sm:px-4 sm:py-3">
                         <span
-                          className={`rounded-lg px-2 py-1 text-xs font-semibold ${
+                          className={`rounded-lg px-1.5 py-0.5 text-[0.6875rem] font-semibold sm:px-2 sm:py-1 sm:text-xs ${
                             row.action === 'buy'
                               ? 'bg-emerald-500/20 text-emerald-300'
                               : row.action === 'sell'
@@ -682,20 +732,26 @@ export function RebalancePanel({
                   ))}
                   {cashRow && (
                     <tr className="bg-slate-950/40">
-                      <td className="px-4 py-3 font-medium text-white">現金</td>
-                      <td className="px-4 py-3 text-right text-slate-200">
+                      <td className="px-2 py-2 font-medium text-white sm:px-4 sm:py-3">現金</td>
+                      <td className="px-2 py-2 text-right text-slate-200 sm:px-4 sm:py-3">
                         {formatNumber(cashRow.currentWeight, 1)}%
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-300">
+                      <td className="px-2 py-2 text-right text-slate-300 sm:px-4 sm:py-3">
                         {formatNumber(cashRow.targetWeight, 1)}%
                       </td>
-                      <td className={`px-4 py-3 text-right ${pnlClass(cashRow.diffWeight)}`}>
+                      <td
+                        className={`px-2 py-2 text-right sm:px-4 sm:py-3 ${pnlClass(cashRow.diffWeight)}`}
+                      >
                         {formatPercent(cashRow.diffWeight, 1)}
                       </td>
-                      <td className={`px-4 py-3 text-right ${pnlClass(cashRow.diffValue)}`}>
+                      <td
+                        className={`px-2 py-2 text-right sm:px-4 sm:py-3 ${pnlClass(cashRow.diffValue)}`}
+                      >
                         {formatCurrency(cashRow.diffValue)}
                       </td>
-                      <td className="px-4 py-3 text-right text-xs text-slate-500">由藍圖調整</td>
+                      <td className="px-2 py-2 text-right text-[0.6875rem] text-slate-500 sm:px-4 sm:py-3 sm:text-xs">
+                        由藍圖調整
+                      </td>
                     </tr>
                   )}
                 </tbody>
@@ -703,9 +759,11 @@ export function RebalancePanel({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
-            <h3 className="mb-4 text-base font-semibold text-white">個股權重 vs 目標</h3>
-            <div className="h-64">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+            <h3 className="mb-2 text-sm font-semibold text-white sm:mb-4 sm:text-base">
+              個股權重 vs 目標
+            </h3>
+            <div className="h-52 sm:h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={detailChart}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -727,11 +785,11 @@ export function RebalancePanel({
         </>
       )}
 
-      <details className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
-        <summary className="cursor-pointer text-base font-semibold text-white">
+      <details className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+        <summary className="cursor-pointer text-sm font-semibold text-white sm:text-base">
           藍圖說明：防禦現金 · 階段配置 · 質押現金流 · 波動賺錢
         </summary>
-        <div className="mt-4 space-y-4 text-sm text-slate-300">
+        <div className="mt-3 space-y-3 text-xs text-slate-300 sm:mt-4 sm:space-y-4 sm:text-sm">
           <section>
             <h4 className="font-semibold text-teal-200">一、保留三成現金的防禦機制</h4>
             <p className="mt-1 text-slate-400">

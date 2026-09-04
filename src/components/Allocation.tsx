@@ -73,13 +73,14 @@ export function Allocation({
   const activeView = views.find((item) => item.id === view)
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-white">資產配置</h2>
-        <p className="mt-1 text-sm text-slate-400">{activeView?.hint}</p>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 sm:block">
+        <h2 className="text-lg font-bold text-white sm:text-2xl">資產配置</h2>
+        <p className="text-xs text-slate-400 sm:mt-1 sm:text-sm">{activeView?.hint}</p>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/70 p-1">
+      {/* 手機一列塞四個子頁，隱藏圖示避免擠壓文字或被迫橫向捲動 */}
+      <div className="grid grid-cols-4 gap-1 rounded-xl border border-slate-800 bg-slate-900/70 p-1 sm:flex sm:gap-2">
         {views.map((item) => {
           const Icon = item.icon
           const active = view === item.id
@@ -88,13 +89,13 @@ export function Allocation({
               key={item.id}
               type="button"
               onClick={() => setView(item.id)}
-              className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
+              className={`flex shrink-0 items-center justify-center gap-2 rounded-lg px-1 py-1.5 text-xs font-medium transition sm:justify-start sm:px-3 sm:py-2 sm:text-sm ${
                 active
                   ? 'bg-teal-500/20 text-teal-300'
                   : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
               }`}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="hidden h-4 w-4 sm:block" />
               {item.label}
             </button>
           )
