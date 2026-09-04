@@ -24,7 +24,7 @@ import {
   chartColor,
   tooltipStyle,
 } from '../utils/chartColors'
-import { FormulaCard } from './FormulaCard'
+import { FormulaHint } from './FormulaHint'
 
 interface AllocationOverviewProps {
   holdings: Holding[]
@@ -95,7 +95,14 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
     <div className="space-y-4 sm:space-y-6">
       <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
-          <p className="text-xs text-slate-400 sm:text-sm">總淨值</p>
+          <p className="flex items-center gap-1 text-xs text-slate-400 sm:text-sm">
+            總淨值
+            <FormulaHint
+              title="總淨值"
+              formula="總淨值 = 持股市值合計 + 淨現金"
+              note="分母含現金，才看得出真正的股票／現金配置"
+            />
+          </p>
           <p className="mt-1 text-lg font-bold text-white sm:mt-2 sm:text-2xl">
             {formatCurrency(summary.netWorth)}
           </p>
@@ -118,7 +125,13 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
           </p>
         </div>
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
-          <p className="text-xs text-slate-400 sm:text-sm">現金比重</p>
+          <p className="flex items-center gap-1 text-xs text-slate-400 sm:text-sm">
+            現金比重
+            <FormulaHint
+              title="現金比重"
+              formula="現金比重 = 淨現金 ÷ 總淨值 × 100%"
+            />
+          </p>
           <p className="mt-1 text-lg font-bold text-sky-300 sm:mt-2 sm:text-2xl">
             {formatNumber(summary.cashRatio, 1)}%
           </p>
@@ -127,7 +140,14 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
           </p>
         </div>
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
-          <p className="text-xs text-slate-400 sm:text-sm">前三大集中度</p>
+          <p className="flex items-center gap-1 text-xs text-slate-400 sm:text-sm">
+            前三大集中度
+            <FormulaHint
+              title="集中度"
+              formula="前三大集中度 = 權重最高三檔的權重合計"
+              note="單一標的建議不超過 20~25%，前三大不超過 50~60%"
+            />
+          </p>
           <p className="mt-1 text-lg font-bold text-amber-300 sm:mt-2 sm:text-2xl">
             {formatNumber(concentration.top3, 1)}%
           </p>
@@ -144,8 +164,13 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
       ) : (
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
-            <h3 className="mb-2 text-sm font-semibold text-white sm:mb-4 sm:text-base">
+            <h3 className="mb-2 flex items-center gap-1 text-sm font-semibold text-white sm:mb-4 sm:text-base">
               全資產配置（含現金）
+              <FormulaHint
+                title="配置權重（佔淨值）"
+                formula="權重 = 個別市值 ÷ 總淨值 × 100%"
+                note="分母含現金，才看得出真正的股票／現金配置"
+              />
             </h3>
             <div className="h-48 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
@@ -269,7 +294,14 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
       {items.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60">
           <div className="border-b border-slate-800 px-3 py-2 sm:px-4 sm:py-3">
-            <h3 className="text-sm font-semibold text-white sm:text-base">配置明細</h3>
+            <h3 className="flex items-center gap-1 text-sm font-semibold text-white sm:text-base">
+              配置明細
+              <FormulaHint
+                title="配置權重（佔淨值）"
+                formula="權重 = 個別市值 ÷ 總淨值 × 100%"
+                note="分母含現金，才看得出真正的股票／現金配置"
+              />
+            </h3>
           </div>
           <div className="divide-y divide-slate-800">
             {items.map((item, index) => {
@@ -346,20 +378,6 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
         </div>
       )}
 
-      <FormulaCard
-        items={[
-          {
-            label: '配置權重（佔淨值）',
-            formula: '權重 = 個別市值 ÷ 總淨值 × 100%',
-            note: '分母含現金，才看得出真正的股票／現金配置',
-          },
-          {
-            label: '集中度',
-            formula: '前三大集中度 = 權重最高三檔的權重合計',
-            note: '單一標的建議不超過 20~25%，前三大不超過 50~60%',
-          },
-        ]}
-      />
     </div>
   )
 }

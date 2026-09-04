@@ -21,7 +21,7 @@ import {
 } from '../utils/exposure'
 import { formatCurrency, formatNumber, formatPercent, pnlClass } from '../utils/calculations'
 import { CHART_FONT_SIZE, tooltipStyle } from '../utils/chartColors'
-import { FormulaCard } from './FormulaCard'
+import { FormulaHint } from './FormulaHint'
 
 interface ExposurePanelProps {
   exposure: ExposureResult
@@ -86,7 +86,13 @@ export function ExposurePanel({
     <div className="space-y-4 sm:space-y-6">
       <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
-          <p className="text-xs text-slate-400 sm:text-sm">總淨值</p>
+          <p className="flex items-center gap-1 text-xs text-slate-400 sm:text-sm">
+            總淨值
+            <FormulaHint
+              title="總淨值"
+              formula="總淨值 = 持股市值合計 + 淨現金（現金 − 負債）"
+            />
+          </p>
           <p className="mt-1 text-lg font-bold text-white sm:mt-2 sm:text-2xl">
             {formatCurrency(summary.netWorth)}
           </p>
@@ -95,7 +101,14 @@ export function ExposurePanel({
           </p>
         </div>
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
-          <p className="text-xs text-slate-400 sm:text-sm">淨曝險</p>
+          <p className="flex items-center gap-1 text-xs text-slate-400 sm:text-sm">
+            淨曝險
+            <FormulaHint
+              title="淨曝險與名目曝險"
+              formula="淨曝險 = Σ(市值 × 倍數)　名目曝險 = Σ|市值 × 倍數|"
+              note="同時持有正 2 與反 1 時，淨曝險會互相抵消，但名目曝險仍反映實際交易規模"
+            />
+          </p>
           <p className="mt-1 text-lg font-bold text-amber-300 sm:mt-2 sm:text-2xl">
             {formatCurrency(summary.netExposure)}
           </p>
@@ -112,6 +125,11 @@ export function ExposurePanel({
         >
           <p className="flex items-center gap-1.5 text-xs text-slate-400 sm:gap-2 sm:text-sm">
             <Gauge className="h-4 w-4" /> 曝險比率
+            <FormulaHint
+              title="曝險比率／實質槓桿"
+              formula="曝險比率 = 淨曝險 ÷ 總淨值 × 100%　實質槓桿 = 淨曝險 ÷ 總淨值"
+              note="100% 表示滿倉無槓桿；120% 代表市場跌 10%，淨值約跌 12%"
+            />
           </p>
           <p
             className={`mt-1 text-lg font-bold sm:mt-2 sm:text-2xl ${
@@ -125,7 +143,14 @@ export function ExposurePanel({
           </p>
         </div>
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
-          <p className="text-xs text-slate-400 sm:text-sm">現金緩衝</p>
+          <p className="flex items-center gap-1 text-xs text-slate-400 sm:text-sm">
+            現金緩衝
+            <FormulaHint
+              title="現金緩衝"
+              formula="現金緩衝 = 淨現金 ÷ 淨曝險 × 100%"
+              note="代表市場需下跌多少幅度，虧損金額才會等於手上現金"
+            />
+          </p>
           <p
             className={`mt-1 text-lg font-bold sm:mt-2 sm:text-2xl ${
               summary.netCash > 0 ? pnlClass(summary.cashBuffer) : 'text-rose-300'
@@ -164,7 +189,14 @@ export function ExposurePanel({
 
       <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
-          <p className="text-xs text-slate-400 sm:text-sm">名目總曝險</p>
+          <p className="flex items-center gap-1 text-xs text-slate-400 sm:text-sm">
+            名目總曝險
+            <FormulaHint
+              title="淨曝險與名目曝險"
+              formula="淨曝險 = Σ(市值 × 倍數)　名目曝險 = Σ|市值 × 倍數|"
+              note="同時持有正 2 與反 1 時，淨曝險會互相抵消，但名目曝險仍反映實際交易規模"
+            />
+          </p>
           <p className="mt-1 text-base font-semibold text-white sm:text-lg">
             {formatCurrency(summary.grossExposure)}
           </p>
@@ -265,10 +297,28 @@ export function ExposurePanel({
                     <th className="px-2 py-2 font-medium sm:px-4 sm:py-3">類別</th>
                     <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">倍數</th>
                     <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">市值</th>
-                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">曝險</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">
+                      <span className="inline-flex items-center justify-end gap-1">
+                        曝險
+                        <FormulaHint
+                          title="單一標的曝險"
+                          formula="曝險 = 市值 × 槓桿倍數"
+                          note="00631L 正 2 市值 100,000 → 曝險 200,000；00632R 反 1 市值 50,000 → 曝險 -50,000"
+                        />
+                      </span>
+                    </th>
                     <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">佔淨值</th>
                     <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">佔曝險</th>
-                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">內含借款</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">
+                      <span className="inline-flex items-center justify-end gap-1">
+                        內含借款
+                        <FormulaHint
+                          title="內含借款"
+                          formula="內含借款 = 曝險 − 市值"
+                          note="槓桿 ETF 用你看不到的融資取得額外曝險，需承擔基金內的借券與管理成本"
+                        />
+                      </span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -462,7 +512,16 @@ export function ExposurePanel({
 
         <div className="mt-3 grid grid-cols-2 gap-2.5 sm:mt-4 sm:gap-3 sm:grid-cols-4">
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2.5 sm:py-3">
-            <p className="text-[0.6875rem] text-slate-500 sm:text-xs">年化波動耗損</p>
+            <p className="text-[0.6875rem] text-slate-500 sm:text-xs">
+              <span className="inline-flex items-center gap-1">
+                年化波動耗損
+                <FormulaHint
+                  title="槓桿波動耗損"
+                  formula="年化耗損 = (k² − k) ÷ 2 × σ²　長期報酬 ≈ k × μ − 耗損"
+                  note="k=2、σ=25% 時每年約耗損 6.25%。例如大盤先漲 10% 再跌 10%（累積 -1%），正 2 為 1.2 × 0.8 = -4%"
+                />
+              </span>
+            </p>
             <p className="mt-0.5 text-base font-semibold text-rose-300 sm:mt-1 sm:text-lg">
               -{formatNumber(decay.drag, 2)}%
             </p>
@@ -500,46 +559,6 @@ export function ExposurePanel({
           </div>
         </div>
       </div>
-
-      <FormulaCard
-        title="曝險與槓桿的計算方式"
-        items={[
-          {
-            label: '單一標的曝險',
-            formula: '曝險 = 市值 × 槓桿倍數',
-            note: '00631L 正 2 市值 100,000 → 曝險 200,000；00632R 反 1 市值 50,000 → 曝險 -50,000',
-          },
-          {
-            label: '總淨值',
-            formula: '總淨值 = 持股市值合計 + 淨現金（現金 − 負債）',
-          },
-          {
-            label: '淨曝險與名目曝險',
-            formula: '淨曝險 = Σ(市值 × 倍數)　名目曝險 = Σ|市值 × 倍數|',
-            note: '同時持有正 2 與反 1 時，淨曝險會互相抵消，但名目曝險仍反映實際交易規模',
-          },
-          {
-            label: '曝險比率／實質槓桿',
-            formula: '曝險比率 = 淨曝險 ÷ 總淨值 × 100%　實質槓桿 = 淨曝險 ÷ 總淨值',
-            note: '100% 表示滿倉無槓桿；120% 代表市場跌 10%，淨值約跌 12%',
-          },
-          {
-            label: '內含借款',
-            formula: '內含借款 = 曝險 − 市值',
-            note: '槓桿 ETF 用你看不到的融資取得額外曝險，需承擔基金內的借券與管理成本',
-          },
-          {
-            label: '現金緩衝',
-            formula: '現金緩衝 = 淨現金 ÷ 淨曝險 × 100%',
-            note: '代表市場需下跌多少幅度，虧損金額才會等於手上現金',
-          },
-          {
-            label: '槓桿波動耗損',
-            formula: '年化耗損 = (k² − k) ÷ 2 × σ²　長期報酬 ≈ k × μ − 耗損',
-            note: 'k=2、σ=25% 時每年約耗損 6.25%。例如大盤先漲 10% 再跌 10%（累積 -1%），正 2 為 1.2 × 0.8 = -4%',
-          },
-        ]}
-      />
     </div>
   )
 }

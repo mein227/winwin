@@ -14,7 +14,7 @@ import {
 import type { CashAccount, CashAccountType, ExposureSummary } from '../types'
 import { formatCurrency, formatNumber, pnlClass } from '../utils/calculations'
 import { cashTypeLabel, cashTypeOptions } from '../utils/exposure'
-import { FormulaCard } from './FormulaCard'
+import { FormulaHint } from './FormulaHint'
 
 interface CashProps {
   cashAccounts: CashAccount[]
@@ -132,25 +132,44 @@ export function Cash({
         <div className="rounded-2xl border border-sky-500/20 bg-gradient-to-br from-sky-500/20 to-sky-500/5 p-3 sm:p-4">
           <p className="flex items-center gap-1.5 text-xs text-slate-400 sm:gap-2 sm:text-sm">
             <Coins className="h-4 w-4" /> 淨現金
+            <FormulaHint
+              title="淨現金"
+              formula="淨現金 = 現金資產合計 − 負債合計"
+              note="融資、質借、信貸都算負債，會放大實際曝險"
+            />
           </p>
           <p
             className={`mt-1 text-lg font-bold sm:mt-2 sm:text-2xl ${pnlClass(summary.netCash)}`}
           >
             {formatCurrency(summary.netCash)}
           </p>
-          <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
+          <p className="mt-0.5 flex items-center gap-1 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
             加權利率 {formatNumber(cashRate, 2)}%
+            <FormulaHint
+              title="現金加權利率"
+              formula="加權利率 = Σ(金額 × 利率) ÷ Σ金額（負債利率以負值計）"
+            />
           </p>
         </div>
         <div className="rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/20 to-violet-500/5 p-3 sm:p-4">
           <p className="flex items-center gap-1.5 text-xs text-slate-400 sm:gap-2 sm:text-sm">
             <Wallet className="h-4 w-4" /> 現金比重
+            <FormulaHint
+              title="現金比重"
+              formula="現金比重 = 淨現金 ÷ 總淨值 × 100%"
+              note="現金比重越高，短期波動越小，但長期報酬也會被稀釋（現金拖累）"
+            />
           </p>
           <p className="mt-1 text-lg font-bold text-violet-200 sm:mt-2 sm:text-2xl">
             {formatNumber(summary.cashRatio, 1)}%
           </p>
-          <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
+          <p className="mt-0.5 flex items-center gap-1 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
             總淨值 {formatCurrency(summary.netWorth)}
+            <FormulaHint
+              title="總淨值"
+              formula="總淨值 = 持股市值合計 + 淨現金"
+              note="所有配置比重、曝險比率、配置藍圖都以總淨值為分母"
+            />
           </p>
         </div>
       </div>
@@ -362,29 +381,6 @@ export function Cash({
         )}
       </div>
 
-      <FormulaCard
-        items={[
-          {
-            label: '淨現金',
-            formula: '淨現金 = 現金資產合計 − 負債合計',
-            note: '融資、質借、信貸都算負債，會放大實際曝險',
-          },
-          {
-            label: '總淨值',
-            formula: '總淨值 = 持股市值合計 + 淨現金',
-            note: '所有配置比重、曝險比率、配置藍圖都以總淨值為分母',
-          },
-          {
-            label: '現金比重',
-            formula: '現金比重 = 淨現金 ÷ 總淨值 × 100%',
-            note: '現金比重越高，短期波動越小，但長期報酬也會被稀釋（現金拖累）',
-          },
-          {
-            label: '現金加權利率',
-            formula: '加權利率 = Σ(金額 × 利率) ÷ Σ金額（負債利率以負值計）',
-          },
-        ]}
-      />
     </div>
   )
 }
