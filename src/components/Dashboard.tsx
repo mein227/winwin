@@ -135,14 +135,14 @@ export function Dashboard({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-white">資產總覽</h2>
-          <p className="mt-1 text-sm text-slate-400">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 sm:block">
+          <h2 className="text-lg font-bold text-white sm:text-2xl">資產總覽</h2>
+          <p className="text-xs text-slate-400 sm:mt-1 sm:text-sm">
             追蹤持股市值、已實現／未實現獲利與整體報酬率
           </p>
-          <p className="mt-1 text-xs text-teal-300/80">
+          <p className="w-full text-[0.6875rem] text-teal-300/80 sm:mt-1 sm:text-xs">
             {pnl.loading
               ? '正在自動更新市價…'
               : pnl.syncedAt
@@ -150,29 +150,29 @@ export function Dashboard({
                 : '開啟頁面時會自動更新市價'}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-4 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
           <button
             type="button"
             onClick={() => void handleRefreshPrices()}
             disabled={refreshing}
-            className="inline-flex items-center gap-2 rounded-xl border border-teal-500/40 bg-teal-500/15 px-3 py-2 text-sm text-teal-200 hover:bg-teal-500/25 disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-1 rounded-xl border border-teal-500/40 bg-teal-500/15 px-2 py-1.5 text-[0.6875rem] text-teal-200 hover:bg-teal-500/25 disabled:opacity-60 sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
           >
             {refreshing ? (
               <LoaderCircle className="h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            更新市價
+            <span className="hidden min-[360px]:inline">更新市價</span>
           </button>
           <button
             type="button"
             onClick={handleExport}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"
+            className="inline-flex items-center justify-center gap-1 rounded-xl border border-slate-700 bg-slate-900 px-2 py-1.5 text-[0.6875rem] text-slate-200 hover:bg-slate-800 sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
           >
             <FileDown className="h-4 w-4" />
             匯出
           </button>
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800">
+          <label className="inline-flex cursor-pointer items-center justify-center gap-1 rounded-xl border border-slate-700 bg-slate-900 px-2 py-1.5 text-[0.6875rem] text-slate-200 hover:bg-slate-800 sm:gap-2 sm:px-3 sm:py-2 sm:text-sm">
             <FileUp className="h-4 w-4" />
             匯入
             <input
@@ -185,7 +185,7 @@ export function Dashboard({
           <button
             type="button"
             onClick={handleClear}
-            className="inline-flex items-center gap-2 rounded-xl border border-rose-900/50 bg-rose-950/40 px-3 py-2 text-sm text-rose-300 hover:bg-rose-950/70"
+            className="inline-flex items-center justify-center gap-1 rounded-xl border border-rose-900/50 bg-rose-950/40 px-2 py-1.5 text-[0.6875rem] text-rose-300 hover:bg-rose-950/70 sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
           >
             <Trash2 className="h-4 w-4" />
             清除
@@ -194,46 +194,43 @@ export function Dashboard({
       </div>
 
       {message && (
-        <div className="rounded-xl border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-sm text-teal-200">
+        <div className="rounded-xl border border-teal-500/30 bg-teal-500/10 px-3 py-1.5 text-xs text-teal-200 sm:px-4 sm:py-2 sm:text-sm">
           {message}
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
         <StatCard
-          title="總淨值（股票＋現金）"
+          title="總淨值"
           value={formatCurrency(exposure.netWorth)}
           subtitle={`股票 ${formatCurrency(exposure.stockValue)}　淨現金 ${formatCurrency(exposure.netCash)}`}
           icon={<Wallet className="h-4 w-4" />}
           accent="teal"
         />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-sm text-slate-400">現金比重</p>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+          <p className="text-xs text-slate-400 sm:text-sm">現金比重</p>
           <p className="mt-1 text-lg font-semibold text-sky-300">
             {formatNumber(exposure.cashRatio, 1)}%
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:text-xs">
             負債 {formatCurrency(exposure.debtValue)}
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-sm text-slate-400">淨曝險</p>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+          <p className="text-xs text-slate-400 sm:text-sm">淨曝險</p>
           <p className="mt-1 text-lg font-semibold text-amber-300">
             {formatCurrency(exposure.netExposure)}
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:text-xs">
             槓桿標的 {formatCurrency(exposure.leveragedValue)}
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-sm text-slate-400">曝險比率</p>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+          <p className="text-xs text-slate-400 sm:text-sm">曝險比率</p>
           <p className="mt-1 text-lg font-semibold text-teal-300">
             {formatNumber(exposure.exposureRatio, 1)}%
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:text-xs">
             實質槓桿 {formatNumber(exposure.leverageRatio, 2)} 倍
           </p>
         </div>
@@ -248,27 +245,27 @@ export function Dashboard({
         onRefresh={pnl.refresh}
       />
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 lg:col-span-3">
-          <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-5">
+        <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5 lg:col-span-3">
+          <div className="mb-2 flex flex-wrap items-end justify-between gap-2 sm:mb-4">
             <div>
-              <h3 className="text-base font-semibold text-white">資產淨值走勢（估算）</h3>
-              <p className="mt-1 text-xs text-slate-500">
+              <h3 className="text-sm font-semibold text-white sm:text-base">資產淨值走勢（估算）</h3>
+              <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
                 以每日收盤價逐日估算，最後一點等於目前總淨值
               </p>
             </div>
             {equityChange && (
               <div className="text-right">
-                <p className={`text-sm font-semibold ${pnlClass(equityChange.diff)}`}>
+                <p className={`text-xs font-semibold sm:text-sm ${pnlClass(equityChange.diff)}`}>
                   {formatCurrency(equityChange.diff)}（{formatPercent(equityChange.percent)}）
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-[0.6875rem] text-slate-500 sm:text-xs">
                   {equityChange.startDate} ~ {equityChange.endDate}
                 </p>
               </div>
             )}
           </div>
-          <div className="h-64 w-full">
+          <div className="h-48 w-full sm:h-64">
             {equityCurve.length === 0 ? (
               <div className="flex h-full items-center justify-center text-center text-sm text-slate-500">
                 {pnl.loading
@@ -338,30 +335,38 @@ export function Dashboard({
           </div>
         </div>
 
-        <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5 lg:col-span-2">
-          <h3 className="mb-4 text-base font-semibold text-white">持股貢獻 TOP 5</h3>
+        <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5 lg:col-span-2">
+          <h3 className="mb-2 text-sm font-semibold text-white sm:mb-4 sm:text-base">
+            持股貢獻 TOP 5
+          </h3>
           {topHoldings.length === 0 ? (
             <p className="py-10 text-center text-sm text-slate-500">尚無持股，請先新增進出紀錄</p>
           ) : (
-            <ul className="space-y-3">
+            <ul className="space-y-2 sm:space-y-3">
               {topHoldings.map((h) => (
                 <li
                   key={h.symbol}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-800/80 bg-slate-950/40 px-3 py-3"
+                  className="flex items-center justify-between gap-2 rounded-xl border border-slate-800/80 bg-slate-950/40 px-2.5 py-2 sm:gap-3 sm:px-3 sm:py-3"
                 >
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-white">
+                    <p className="truncate text-sm font-medium text-white sm:text-base">
                       {h.symbol}{' '}
                       <span className="text-slate-400">{h.name}</span>
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-[0.6875rem] text-slate-500 sm:text-xs">
                       市值 {formatCurrency(h.marketValue)} · 權重 {h.weight.toFixed(1)}%
                     </p>
-                    <StockExternalLinks symbol={h.symbol} />
+                    <div className="hidden sm:block">
+                      <StockExternalLinks symbol={h.symbol} />
+                    </div>
                   </div>
-                  <div className={`text-right text-sm font-semibold ${pnlClass(h.unrealizedPnL)}`}>
+                  <div
+                    className={`shrink-0 text-right text-xs font-semibold sm:text-sm ${pnlClass(h.unrealizedPnL)}`}
+                  >
                     <div>{formatCurrency(h.unrealizedPnL)}</div>
-                    <div className="text-xs">{formatPercent(h.unrealizedPnLPercent)}</div>
+                    <div className="text-[0.6875rem] sm:text-xs">
+                      {formatPercent(h.unrealizedPnLPercent)}
+                    </div>
                   </div>
                 </li>
               ))}

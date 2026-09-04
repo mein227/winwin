@@ -112,25 +112,25 @@ export function PnlPanel({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h3 className="flex items-center gap-2 text-lg font-semibold text-white">
-            <CalendarRange className="h-5 w-5 text-teal-300" />
+    <div className="space-y-3 sm:space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 sm:block">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-white sm:text-lg">
+            <CalendarRange className="h-4 w-4 text-teal-300 sm:h-5 sm:w-5" />
             損益月曆
           </h3>
-          <p className="mt-1 text-sm text-slate-400">
-            每日、每週、每月與自選區間的總損益；瀏覽頁面時會自動更新市價
+          <p className="text-[0.6875rem] text-slate-400 sm:mt-1 sm:text-sm">
+            每日、每週、每月與自選區間的總損益
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+        <div className="flex flex-wrap items-center gap-2 text-[0.6875rem] text-slate-500 sm:gap-3 sm:text-xs">
           {quoteDate && <span>市價日期 {quoteDate}</span>}
           {syncedAt && <span>更新於 {format(parseISO(syncedAt), 'MM/dd HH:mm')}</span>}
           <button
             type="button"
             onClick={onRefresh}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800 disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs text-slate-200 hover:bg-slate-800 disabled:opacity-60 sm:gap-2 sm:px-3 sm:py-2 sm:text-sm"
           >
             {loading ? (
               <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -155,7 +155,7 @@ export function PnlPanel({
             : '尚無可計算的損益，請先到「進出紀錄」新增買進或賣出'}
         </div>
       ) : (
-        <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+        <div className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-2.5 sm:space-y-4 sm:p-5">
           <PnlRangeControls
             range={range}
             bounds={bounds}
@@ -163,7 +163,7 @@ export function PnlPanel({
             onRangeChange={setManualRange}
           />
 
-          <div className="border-t border-slate-800 pt-4">
+          <div className="border-t border-slate-800 pt-2.5 sm:pt-4">
             <PnlCalendar
               month={month}
               canPrev={canPrev}
