@@ -355,7 +355,7 @@ export function RiskPanel({
               <h3 className="text-sm font-semibold text-white sm:text-base">個別標的風險指標</h3>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-xs sm:text-sm">
+              <table className="min-w-full whitespace-nowrap text-left text-xs sm:text-sm">
                 <thead className="border-b border-slate-800 bg-slate-950/60 text-slate-400">
                   <tr>
                     <th className="px-2 py-2 font-medium sm:px-4 sm:py-3">標的</th>

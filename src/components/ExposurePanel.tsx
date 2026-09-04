@@ -258,7 +258,7 @@ export function ExposurePanel({
               </p>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-xs sm:text-sm">
+              <table className="min-w-full whitespace-nowrap text-left text-xs sm:text-sm">
                 <thead className="border-b border-slate-800 bg-slate-950/60 text-slate-400">
                   <tr>
                     <th className="px-2 py-2 font-medium sm:px-4 sm:py-3">標的</th>
@@ -361,7 +361,7 @@ export function ExposurePanel({
               假設持股跟隨大盤同步變動（Beta = 1），以淨曝險推估淨值變化
             </p>
             <div className="mt-2 overflow-x-auto sm:mt-4">
-              <table className="min-w-full text-left text-xs sm:text-sm">
+              <table className="min-w-full whitespace-nowrap text-left text-xs sm:text-sm">
                 <thead className="border-b border-slate-800 text-slate-400">
                   <tr>
                     <th className="py-1.5 pr-3 font-medium sm:py-2 sm:pr-4">大盤變動</th>
