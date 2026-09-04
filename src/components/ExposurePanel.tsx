@@ -83,57 +83,57 @@ export function ExposurePanel({
     assetSettings.some((s) => s.symbol.toUpperCase() === symbol.toUpperCase() && !s.auto)
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-sm text-slate-400">總淨值</p>
-          <p className="mt-2 text-2xl font-bold text-white">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+          <p className="text-xs text-slate-400 sm:text-sm">總淨值</p>
+          <p className="mt-1 text-lg font-bold text-white sm:mt-2 sm:text-2xl">
             {formatCurrency(summary.netWorth)}
           </p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
             股票 {formatCurrency(summary.stockValue)}／現金 {formatCurrency(summary.netCash)}
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-sm text-slate-400">淨曝險</p>
-          <p className="mt-2 text-2xl font-bold text-amber-300">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+          <p className="text-xs text-slate-400 sm:text-sm">淨曝險</p>
+          <p className="mt-1 text-lg font-bold text-amber-300 sm:mt-2 sm:text-2xl">
             {formatCurrency(summary.netExposure)}
           </p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
             內含借款 {formatCurrency(summary.impliedBorrow)}
           </p>
         </div>
         <div
-          className={`rounded-2xl border p-4 ${
+          className={`rounded-2xl border p-3 sm:p-4 ${
             overLimit
               ? 'border-rose-500/40 bg-rose-500/10'
               : 'border-slate-800 bg-slate-900/60'
           }`}
         >
-          <p className="flex items-center gap-2 text-sm text-slate-400">
+          <p className="flex items-center gap-1.5 text-xs text-slate-400 sm:gap-2 sm:text-sm">
             <Gauge className="h-4 w-4" /> 曝險比率
           </p>
           <p
-            className={`mt-2 text-2xl font-bold ${
+            className={`mt-1 text-lg font-bold sm:mt-2 sm:text-2xl ${
               overLimit ? 'text-rose-300' : 'text-teal-300'
             }`}
           >
             {formatNumber(summary.exposureRatio, 1)}%
           </p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
             實質槓桿 {formatNumber(summary.leverageRatio, 2)} 倍
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-sm text-slate-400">現金緩衝</p>
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+          <p className="text-xs text-slate-400 sm:text-sm">現金緩衝</p>
           <p
-            className={`mt-2 text-2xl font-bold ${
+            className={`mt-1 text-lg font-bold sm:mt-2 sm:text-2xl ${
               summary.netCash > 0 ? pnlClass(summary.cashBuffer) : 'text-rose-300'
             }`}
           >
             {summary.netCash > 0 ? `${formatNumber(summary.cashBuffer, 1)}%` : '0.0%'}
           </p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
             {summary.netCash > 0
               ? '市場跌超過此幅度，虧損金額將大於手上現金'
               : '淨現金為負，已無下跌緩衝空間'}
@@ -142,7 +142,7 @@ export function ExposurePanel({
       </div>
 
       {summary.netWorth <= 0 && (
-        <div className="flex items-start gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        <div className="flex items-start gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-2.5 text-xs text-rose-200 sm:gap-3 sm:px-4 sm:py-3 sm:text-sm">
           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
             負債已超過總資產，淨值為 {formatCurrency(summary.netWorth)}。此狀態下權重與曝險
@@ -152,7 +152,7 @@ export function ExposurePanel({
       )}
 
       {overLimit && (
-        <div className="flex items-start gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        <div className="flex items-start gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3 py-2.5 text-xs text-rose-200 sm:gap-3 sm:px-4 sm:py-3 sm:text-sm">
           <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
             目前曝險比率 {formatNumber(summary.exposureRatio, 1)}% 已超過你設定的上限{' '}
@@ -162,36 +162,36 @@ export function ExposurePanel({
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-sm text-slate-400">名目總曝險</p>
-          <p className="mt-1 text-lg font-semibold text-white">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+          <p className="text-xs text-slate-400 sm:text-sm">名目總曝險</p>
+          <p className="mt-1 text-base font-semibold text-white sm:text-lg">
             {formatCurrency(summary.grossExposure)}
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-[0.6875rem] text-slate-500 sm:text-xs">
             佔淨值 {formatNumber(summary.grossExposureRatio, 1)}%
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-sm text-slate-400">多方／空方曝險</p>
-          <p className="mt-1 text-lg font-semibold text-white">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+          <p className="text-xs text-slate-400 sm:text-sm">多方／空方曝險</p>
+          <p className="mt-1 text-base font-semibold text-white sm:text-lg">
             {formatCurrency(summary.longExposure)}
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-[0.6875rem] text-slate-500 sm:text-xs">
             反向部位 {formatCurrency(summary.shortExposure)}
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-sm text-slate-400">槓桿型標的市值</p>
-          <p className="mt-1 text-lg font-semibold text-white">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+          <p className="text-xs text-slate-400 sm:text-sm">槓桿型標的市值</p>
+          <p className="mt-1 text-base font-semibold text-white sm:text-lg">
             {formatCurrency(summary.leveragedValue)}
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-[0.6875rem] text-slate-500 sm:text-xs">
             佔持股 {formatNumber(summary.leveragedRatio, 1)}%
           </p>
         </div>
-        <label className="block rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <span className="text-sm text-slate-400">曝險上限 %（提醒用）</span>
+        <label className="block rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+          <span className="text-xs text-slate-400 sm:text-sm">曝險上限 %（提醒用）</span>
           <input
             type="number"
             step="5"
@@ -199,7 +199,7 @@ export function ExposurePanel({
             onChange={(e) =>
               onUpdateSettings({ maxExposureRatio: Number(e.target.value) || 0 })
             }
-            className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-teal-500"
+            className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-white outline-none focus:border-teal-500 sm:mt-2 sm:py-2"
           />
         </label>
       </div>
@@ -210,9 +210,11 @@ export function ExposurePanel({
         </div>
       ) : (
         <>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
-            <h3 className="mb-4 text-base font-semibold text-white">市值 vs 曝險</h3>
-            <div className="h-72">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+            <h3 className="mb-2 text-sm font-semibold text-white sm:mb-4 sm:text-base">
+              市值 vs 曝險
+            </h3>
+            <div className="h-56 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -249,24 +251,24 @@ export function ExposurePanel({
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60">
-            <div className="flex flex-col gap-1 border-b border-slate-800 px-4 py-3">
-              <h3 className="font-semibold text-white">曝險明細</h3>
-              <p className="text-xs text-slate-500">
+            <div className="flex flex-col gap-0.5 border-b border-slate-800 px-3 py-2 sm:gap-1 sm:px-4 sm:py-3">
+              <h3 className="text-sm font-semibold text-white sm:text-base">曝險明細</h3>
+              <p className="text-[0.6875rem] text-slate-500 sm:text-xs">
                 系統依代號與名稱自動判定倍數（正 2 → 2、反 1 → -1），可手動修改
               </p>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
+              <table className="min-w-full whitespace-nowrap text-left text-xs sm:text-sm">
                 <thead className="border-b border-slate-800 bg-slate-950/60 text-slate-400">
                   <tr>
-                    <th className="px-4 py-3 font-medium">標的</th>
-                    <th className="px-4 py-3 font-medium">類別</th>
-                    <th className="px-4 py-3 font-medium text-right">倍數</th>
-                    <th className="px-4 py-3 font-medium text-right">市值</th>
-                    <th className="px-4 py-3 font-medium text-right">曝險</th>
-                    <th className="px-4 py-3 font-medium text-right">佔淨值</th>
-                    <th className="px-4 py-3 font-medium text-right">佔曝險</th>
-                    <th className="px-4 py-3 font-medium text-right">內含借款</th>
+                    <th className="px-2 py-2 font-medium sm:px-4 sm:py-3">標的</th>
+                    <th className="px-2 py-2 font-medium sm:px-4 sm:py-3">類別</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">倍數</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">市值</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">曝險</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">佔淨值</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">佔曝險</th>
+                    <th className="px-2 py-2 font-medium text-right sm:px-4 sm:py-3">內含借款</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -275,11 +277,13 @@ export function ExposurePanel({
                       key={item.symbol}
                       className="border-b border-slate-800/70 last:border-0 hover:bg-slate-800/30"
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-2 py-2 sm:px-4 sm:py-3">
                         <div className="font-medium text-white">{item.symbol}</div>
-                        <div className="text-xs text-slate-500">{item.name}</div>
+                        <div className="text-[0.6875rem] text-slate-500 sm:text-xs">
+                          {item.name}
+                        </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-2 py-2 sm:px-4 sm:py-3">
                         <select
                           value={item.assetClass}
                           onChange={(e) =>
@@ -297,7 +301,7 @@ export function ExposurePanel({
                           ))}
                         </select>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-2 py-2 text-right sm:px-4 sm:py-3">
                         <div className="inline-flex items-center gap-1">
                           <input
                             type="number"
@@ -327,19 +331,21 @@ export function ExposurePanel({
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-200">
+                      <td className="px-2 py-2 text-right text-slate-200 sm:px-4 sm:py-3">
                         {formatCurrency(item.marketValue)}
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold text-amber-200">
+                      <td className="px-2 py-2 text-right font-semibold text-amber-200 sm:px-4 sm:py-3">
                         {formatCurrency(item.exposure)}
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-300">
+                      <td className="px-2 py-2 text-right text-slate-300 sm:px-4 sm:py-3">
                         {formatNumber(item.valueWeight, 1)}%
                       </td>
-                      <td className="px-4 py-3 text-right text-slate-300">
+                      <td className="px-2 py-2 text-right text-slate-300 sm:px-4 sm:py-3">
                         {formatNumber(item.exposureWeight, 1)}%
                       </td>
-                      <td className={`px-4 py-3 text-right ${pnlClass(-item.impliedBorrow)}`}>
+                      <td
+                        className={`px-2 py-2 text-right sm:px-4 sm:py-3 ${pnlClass(-item.impliedBorrow)}`}
+                      >
                         {formatCurrency(item.impliedBorrow)}
                       </td>
                     </tr>
@@ -349,19 +355,23 @@ export function ExposurePanel({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
-            <h3 className="text-base font-semibold text-white">市場情境模擬</h3>
-            <p className="mt-1 text-xs text-slate-500">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+            <h3 className="text-sm font-semibold text-white sm:text-base">市場情境模擬</h3>
+            <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
               假設持股跟隨大盤同步變動（Beta = 1），以淨曝險推估淨值變化
             </p>
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
+            <div className="mt-2 overflow-x-auto sm:mt-4">
+              <table className="min-w-full whitespace-nowrap text-left text-xs sm:text-sm">
                 <thead className="border-b border-slate-800 text-slate-400">
                   <tr>
-                    <th className="py-2 pr-4 font-medium">大盤變動</th>
-                    <th className="py-2 pr-4 font-medium text-right">淨值變動金額</th>
-                    <th className="py-2 pr-4 font-medium text-right">淨值變動 %</th>
-                    <th className="py-2 font-medium text-right">變動後淨值</th>
+                    <th className="py-1.5 pr-3 font-medium sm:py-2 sm:pr-4">大盤變動</th>
+                    <th className="py-1.5 pr-3 font-medium text-right sm:py-2 sm:pr-4">
+                      淨值變動金額
+                    </th>
+                    <th className="py-1.5 pr-3 font-medium text-right sm:py-2 sm:pr-4">
+                      淨值變動 %
+                    </th>
+                    <th className="py-1.5 font-medium text-right sm:py-2">變動後淨值</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -369,16 +379,22 @@ export function ExposurePanel({
                     const result = marketScenario(summary, scenario)
                     return (
                       <tr key={scenario} className="border-b border-slate-800/60 last:border-0">
-                        <td className={`py-2 pr-4 font-medium ${pnlClass(scenario)}`}>
+                        <td
+                          className={`py-1.5 pr-3 font-medium sm:py-2 sm:pr-4 ${pnlClass(scenario)}`}
+                        >
                           {formatPercent(scenario, 0)}
                         </td>
-                        <td className={`py-2 pr-4 text-right ${pnlClass(result.changeAmount)}`}>
+                        <td
+                          className={`py-1.5 pr-3 text-right sm:py-2 sm:pr-4 ${pnlClass(result.changeAmount)}`}
+                        >
                           {formatCurrency(result.changeAmount)}
                         </td>
-                        <td className={`py-2 pr-4 text-right ${pnlClass(result.changePercent)}`}>
+                        <td
+                          className={`py-1.5 pr-3 text-right sm:py-2 sm:pr-4 ${pnlClass(result.changePercent)}`}
+                        >
                           {formatPercent(result.changePercent, 1)}
                         </td>
-                        <td className="py-2 text-right text-slate-200">
+                        <td className="py-1.5 text-right text-slate-200 sm:py-2">
                           {formatCurrency(result.netWorthAfter)}
                         </td>
                       </tr>
@@ -391,16 +407,16 @@ export function ExposurePanel({
         </>
       )}
 
-      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 sm:p-5">
-        <h3 className="flex items-center gap-2 text-base font-semibold text-white">
+      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3 sm:p-5">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-white sm:text-base">
           <Zap className="h-4 w-4 text-amber-300" />
           槓桿 ETF（正 2）波動耗損試算
         </h3>
-        <p className="mt-1 text-xs text-slate-400">
+        <p className="mt-0.5 text-[0.6875rem] text-slate-400 sm:mt-1 sm:text-xs">
           正 2 每日重設槓桿，長期報酬不等於大盤的兩倍；波動越大，耗損越明顯
         </p>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-4">
+        <div className="mt-3 grid grid-cols-2 gap-2.5 sm:mt-4 sm:gap-3 sm:grid-cols-4">
           <label className="block space-y-1.5">
             <span className="text-xs text-slate-400">槓桿倍數 k</span>
             <input
@@ -408,7 +424,7 @@ export function ExposurePanel({
               step="0.5"
               value={calc.leverage}
               onChange={(e) => setCalc((prev) => ({ ...prev, leverage: e.target.value }))}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-teal-500"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-white outline-none focus:border-teal-500 sm:py-2"
             />
           </label>
           <label className="block space-y-1.5">
@@ -418,7 +434,7 @@ export function ExposurePanel({
               step="any"
               value={calc.volatility}
               onChange={(e) => setCalc((prev) => ({ ...prev, volatility: e.target.value }))}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-teal-500"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-white outline-none focus:border-teal-500 sm:py-2"
             />
           </label>
           <label className="block space-y-1.5">
@@ -428,7 +444,7 @@ export function ExposurePanel({
               step="any"
               value={calc.marketReturn}
               onChange={(e) => setCalc((prev) => ({ ...prev, marketReturn: e.target.value }))}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-teal-500"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-white outline-none focus:border-teal-500 sm:py-2"
             />
           </label>
           <label className="block space-y-1.5">
@@ -439,36 +455,46 @@ export function ExposurePanel({
               min="1"
               value={calc.years}
               onChange={(e) => setCalc((prev) => ({ ...prev, years: e.target.value }))}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-teal-500"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-white outline-none focus:border-teal-500 sm:py-2"
             />
           </label>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-4">
-          <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-3">
-            <p className="text-xs text-slate-500">年化波動耗損</p>
-            <p className="mt-1 text-lg font-semibold text-rose-300">
+        <div className="mt-3 grid grid-cols-2 gap-2.5 sm:mt-4 sm:gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2.5 sm:py-3">
+            <p className="text-[0.6875rem] text-slate-500 sm:text-xs">年化波動耗損</p>
+            <p className="mt-0.5 text-base font-semibold text-rose-300 sm:mt-1 sm:text-lg">
               -{formatNumber(decay.drag, 2)}%
             </p>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-3">
-            <p className="text-xs text-slate-500">槓桿 ETF 年化報酬</p>
-            <p className={`mt-1 text-lg font-semibold ${pnlClass(decay.etfReturn)}`}>
+          <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2.5 sm:py-3">
+            <p className="text-[0.6875rem] text-slate-500 sm:text-xs">槓桿 ETF 年化報酬</p>
+            <p
+              className={`mt-0.5 text-base font-semibold sm:mt-1 sm:text-lg ${pnlClass(decay.etfReturn)}`}
+            >
               {formatPercent(decay.etfReturn)}
             </p>
-            <p className="text-xs text-slate-500">
+            <p className="text-[0.6875rem] text-slate-500 sm:text-xs">
               單純 k 倍為 {formatPercent(decay.k * decay.mu)}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-3">
-            <p className="text-xs text-slate-500">{decay.years} 年累積（大盤）</p>
-            <p className={`mt-1 text-lg font-semibold ${pnlClass(decay.marketGrowth)}`}>
+          <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2.5 sm:py-3">
+            <p className="text-[0.6875rem] text-slate-500 sm:text-xs">
+              {decay.years} 年累積（大盤）
+            </p>
+            <p
+              className={`mt-0.5 text-base font-semibold sm:mt-1 sm:text-lg ${pnlClass(decay.marketGrowth)}`}
+            >
               {formatPercent(decay.marketGrowth, 1)}
             </p>
           </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-3">
-            <p className="text-xs text-slate-500">{decay.years} 年累積（槓桿）</p>
-            <p className={`mt-1 text-lg font-semibold ${pnlClass(decay.etfGrowth)}`}>
+          <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2.5 sm:py-3">
+            <p className="text-[0.6875rem] text-slate-500 sm:text-xs">
+              {decay.years} 年累積（槓桿）
+            </p>
+            <p
+              className={`mt-0.5 text-base font-semibold sm:mt-1 sm:text-lg ${pnlClass(decay.etfGrowth)}`}
+            >
               {formatPercent(decay.etfGrowth, 1)}
             </p>
           </div>

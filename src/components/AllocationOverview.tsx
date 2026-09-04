@@ -14,6 +14,7 @@ import {
 } from 'recharts'
 import type { Holding } from '../types'
 import type { ExposureResult } from '../utils/exposure'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { formatCurrency, formatNumber, formatPercent, pnlClass } from '../utils/calculations'
 import {
   CASH_COLOR,
@@ -33,6 +34,7 @@ interface AllocationOverviewProps {
 export function AllocationOverview({ holdings, exposure }: AllocationOverviewProps) {
   const { items, summary, breakdown } = exposure
   const active = holdings.filter((h) => h.shares > 0)
+  const isMobile = useIsMobile()
 
   const pieData = useMemo(() => {
     const data = items.map((item, index) => ({
@@ -90,21 +92,23 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
   }, [items])
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-sm text-slate-400">總淨值</p>
-          <p className="mt-2 text-2xl font-bold text-white">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+          <p className="text-xs text-slate-400 sm:text-sm">總淨值</p>
+          <p className="mt-1 text-lg font-bold text-white sm:mt-2 sm:text-2xl">
             {formatCurrency(summary.netWorth)}
           </p>
-          <p className="mt-1 text-xs text-slate-500">股票 + 淨現金</p>
+          <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
+            股票 + 淨現金
+          </p>
         </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-sm text-slate-400">股票市值</p>
-          <p className="mt-2 text-2xl font-bold text-teal-300">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+          <p className="text-xs text-slate-400 sm:text-sm">股票市值</p>
+          <p className="mt-1 text-lg font-bold text-teal-300 sm:mt-2 sm:text-2xl">
             {formatCurrency(summary.stockValue)}
           </p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
             佔淨值{' '}
             {formatNumber(
               summary.netWorth > 0 ? (summary.stockValue / summary.netWorth) * 100 : 0,
@@ -113,21 +117,21 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
             %
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-sm text-slate-400">現金比重</p>
-          <p className="mt-2 text-2xl font-bold text-sky-300">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+          <p className="text-xs text-slate-400 sm:text-sm">現金比重</p>
+          <p className="mt-1 text-lg font-bold text-sky-300 sm:mt-2 sm:text-2xl">
             {formatNumber(summary.cashRatio, 1)}%
           </p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
             淨現金 {formatCurrency(summary.netCash)}
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-sm text-slate-400">前三大集中度</p>
-          <p className="mt-2 text-2xl font-bold text-amber-300">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
+          <p className="text-xs text-slate-400 sm:text-sm">前三大集中度</p>
+          <p className="mt-1 text-lg font-bold text-amber-300 sm:mt-2 sm:text-2xl">
             {formatNumber(concentration.top3, 1)}%
           </p>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
             最大 {concentration.top1Symbol} {formatNumber(concentration.top1, 1)}%
           </p>
         </div>
@@ -138,12 +142,12 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
           尚無持股或現金資料，請先新增進出紀錄與現金帳戶
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
-            <h3 className="mb-4 text-base font-semibold text-white">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+            <h3 className="mb-2 text-sm font-semibold text-white sm:mb-4 sm:text-base">
               全資產配置（含現金）
             </h3>
-            <div className="h-72">
+            <div className="h-48 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -167,20 +171,25 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
                       '金額',
                     ]}
                   />
-                  <Legend
-                    wrapperStyle={{ fontSize: CHART_FONT_SIZE }}
-                    formatter={(value) => (
-                      <span className="text-slate-300">{String(value)}</span>
-                    )}
-                  />
+                  {/* 手機省略圖例，下方「配置明細」已用同一組顏色列出每檔標的 */}
+                  {!isMobile && (
+                    <Legend
+                      wrapperStyle={{ fontSize: CHART_FONT_SIZE }}
+                      formatter={(value) => (
+                        <span className="text-slate-300">{String(value)}</span>
+                      )}
+                    />
+                  )}
                 </PieChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
-            <h3 className="mb-4 text-base font-semibold text-white">資產類別分布</h3>
-            <div className="h-72">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+            <h3 className="mb-2 text-sm font-semibold text-white sm:mb-4 sm:text-base">
+              資產類別分布
+            </h3>
+            <div className="h-64 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -217,9 +226,11 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
       )}
 
       {pnlData.length > 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 sm:p-5">
-          <h3 className="mb-4 text-base font-semibold text-white">未實現損益比較</h3>
-          <div className="h-72">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-5">
+          <h3 className="mb-2 text-sm font-semibold text-white sm:mb-4 sm:text-base">
+            未實現損益比較
+          </h3>
+          <div className="h-56 sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={pnlData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -257,47 +268,52 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
 
       {items.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60">
-          <div className="border-b border-slate-800 px-4 py-3">
-            <h3 className="font-semibold text-white">配置明細</h3>
+          <div className="border-b border-slate-800 px-3 py-2 sm:px-4 sm:py-3">
+            <h3 className="text-sm font-semibold text-white sm:text-base">配置明細</h3>
           </div>
           <div className="divide-y divide-slate-800">
             {items.map((item, index) => {
               const holding = active.find((h) => h.symbol === item.symbol)
+              const bar = (
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.min(Math.abs(item.valueWeight), 100)}%`,
+                    background: chartColor(index),
+                  }}
+                />
+              )
               return (
                 <div
                   key={item.symbol}
-                  className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex items-center gap-2.5 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3.5"
                 >
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="h-3 w-3 rounded-full"
-                      style={{ background: chartColor(index) }}
-                    />
-                    <div>
-                      <p className="font-medium text-white">
-                        {item.symbol} <span className="text-slate-400">{item.name}</span>
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {formatCurrency(item.marketValue)}
-                        {holding && ` · 成本 ${formatCurrency(holding.totalCost)}`}
-                      </p>
+                  <span
+                    className="mt-1.5 h-2.5 w-2.5 shrink-0 self-start rounded-full sm:mt-0 sm:h-3 sm:w-3 sm:self-center"
+                    style={{ background: chartColor(index) }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-white sm:text-base">
+                      {item.symbol} <span className="text-slate-400">{item.name}</span>
+                    </p>
+                    <p className="truncate text-[0.6875rem] text-slate-500 sm:text-xs">
+                      {formatCurrency(item.marketValue)}
+                      {holding && ` · 成本 ${formatCurrency(holding.totalCost)}`}
+                    </p>
+                    {/* 手機沒有寬度並排長條，改放在標的下方 */}
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-800 sm:hidden">
+                      {bar}
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 sm:min-w-[17.5rem]">
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
-                      <div
-                        className="h-full rounded-full"
-                        style={{
-                          width: `${Math.min(Math.abs(item.valueWeight), 100)}%`,
-                          background: chartColor(index),
-                        }}
-                      />
-                    </div>
-                    <span className="w-14 text-right text-sm text-slate-300">
+                  <div className="hidden h-2 w-40 shrink-0 overflow-hidden rounded-full bg-slate-800 sm:block lg:w-56">
+                    {bar}
+                  </div>
+                  <div className="shrink-0 text-right sm:flex sm:items-center sm:gap-4">
+                    <span className="block text-sm text-slate-300 sm:w-14">
                       {formatNumber(item.valueWeight, 1)}%
                     </span>
                     <span
-                      className={`w-24 text-right text-sm font-medium ${pnlClass(
+                      className={`block text-[0.6875rem] font-medium sm:w-24 sm:text-sm ${pnlClass(
                         holding?.unrealizedPnL ?? 0,
                       )}`}
                     >
@@ -308,20 +324,20 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
               )
             })}
             {summary.netCash > 0 && (
-              <div className="flex items-center justify-between gap-3 bg-slate-950/40 px-4 py-4">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between gap-3 bg-slate-950/40 px-3 py-2.5 sm:px-4 sm:py-3.5">
+                <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
                   <span
-                    className="h-3 w-3 rounded-full"
+                    className="h-2.5 w-2.5 shrink-0 rounded-full sm:h-3 sm:w-3"
                     style={{ background: CASH_COLOR }}
                   />
-                  <div>
-                    <p className="font-medium text-white">現金</p>
-                    <p className="text-xs text-slate-500">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-white sm:text-base">現金</p>
+                    <p className="truncate text-[0.6875rem] text-slate-500 sm:text-xs">
                       {formatCurrency(summary.netCash)}
                     </p>
                   </div>
                 </div>
-                <span className="text-sm text-slate-300">
+                <span className="shrink-0 text-sm text-slate-300">
                   {formatNumber(summary.cashRatio, 1)}%
                 </span>
               </div>
