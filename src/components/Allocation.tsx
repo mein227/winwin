@@ -32,16 +32,42 @@ interface AllocationProps {
   onUpdateSettings: (patch: Partial<AllocationSettings>) => void
 }
 
-const views: { id: AllocationView; label: string; icon: typeof PieChart; hint: string }[] = [
-  { id: 'overview', label: '配置總覽', icon: PieChart, hint: '股票與現金的實際配置比重' },
-  { id: 'exposure', label: '曝險與槓桿', icon: Gauge, hint: '正 2 等槓桿標的的真實曝險' },
+/** shortLabel 是手機版標籤，四個子頁要並排就得統一縮到四個字 */
+const views: {
+  id: AllocationView
+  label: string
+  shortLabel: string
+  icon: typeof PieChart
+  hint: string
+}[] = [
+  {
+    id: 'overview',
+    label: '配置總覽',
+    shortLabel: '配置總覽',
+    icon: PieChart,
+    hint: '股票與現金的實際配置比重',
+  },
+  {
+    id: 'exposure',
+    label: '曝險與槓桿',
+    shortLabel: '曝險槓桿',
+    icon: Gauge,
+    hint: '正 2 等槓桿標的的真實曝險',
+  },
   {
     id: 'rebalance',
     label: '資產配置藍圖',
+    shortLabel: '配置藍圖',
     icon: Scale,
     hint: '正二與現金共生：依生活費倍數給出階段配置與動作提醒',
   },
-  { id: 'risk', label: '報酬風險', icon: Activity, hint: '波動度、夏普值與風險貢獻' },
+  {
+    id: 'risk',
+    label: '報酬風險',
+    shortLabel: '報酬風險',
+    icon: Activity,
+    hint: '波動度、夏普值與風險貢獻',
+  },
 ]
 
 export function Allocation({
@@ -89,14 +115,15 @@ export function Allocation({
               key={item.id}
               type="button"
               onClick={() => setView(item.id)}
-              className={`flex shrink-0 items-center justify-center gap-2 rounded-lg px-1 py-1.5 text-xs font-medium transition sm:justify-start sm:px-3 sm:py-2 sm:text-sm ${
+              className={`flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-1 py-1.5 text-[0.6875rem] font-medium transition sm:justify-start sm:px-3 sm:py-2 sm:text-sm ${
                 active
                   ? 'bg-teal-500/20 text-teal-300'
                   : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
               }`}
             >
               <Icon className="hidden h-4 w-4 sm:block" />
-              {item.label}
+              <span className="sm:hidden">{item.shortLabel}</span>
+              <span className="hidden sm:inline">{item.label}</span>
             </button>
           )
         })}

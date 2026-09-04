@@ -14,6 +14,7 @@ import {
 } from 'recharts'
 import type { Holding } from '../types'
 import type { ExposureResult } from '../utils/exposure'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { formatCurrency, formatNumber, formatPercent, pnlClass } from '../utils/calculations'
 import {
   CASH_COLOR,
@@ -33,6 +34,7 @@ interface AllocationOverviewProps {
 export function AllocationOverview({ holdings, exposure }: AllocationOverviewProps) {
   const { items, summary, breakdown } = exposure
   const active = holdings.filter((h) => h.shares > 0)
+  const isMobile = useIsMobile()
 
   const pieData = useMemo(() => {
     const data = items.map((item, index) => ({
@@ -145,7 +147,7 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
             <h3 className="mb-2 text-sm font-semibold text-white sm:mb-4 sm:text-base">
               全資產配置（含現金）
             </h3>
-            <div className="h-56 sm:h-72">
+            <div className="h-48 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -169,12 +171,15 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
                       '金額',
                     ]}
                   />
-                  <Legend
-                    wrapperStyle={{ fontSize: CHART_FONT_SIZE }}
-                    formatter={(value) => (
-                      <span className="text-slate-300">{String(value)}</span>
-                    )}
-                  />
+                  {/* 手機省略圖例，下方「配置明細」已用同一組顏色列出每檔標的 */}
+                  {!isMobile && (
+                    <Legend
+                      wrapperStyle={{ fontSize: CHART_FONT_SIZE }}
+                      formatter={(value) => (
+                        <span className="text-slate-300">{String(value)}</span>
+                      )}
+                    />
+                  )}
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -184,7 +189,7 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
             <h3 className="mb-2 text-sm font-semibold text-white sm:mb-4 sm:text-base">
               資產類別分布
             </h3>
-            <div className="h-56 sm:h-72">
+            <div className="h-64 sm:h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -284,7 +289,7 @@ export function AllocationOverview({ holdings, exposure }: AllocationOverviewPro
                   className="flex items-center gap-2.5 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3.5"
                 >
                   <span
-                    className="h-2.5 w-2.5 shrink-0 rounded-full sm:h-3 sm:w-3"
+                    className="mt-1.5 h-2.5 w-2.5 shrink-0 self-start rounded-full sm:mt-0 sm:h-3 sm:w-3 sm:self-center"
                     style={{ background: chartColor(index) }}
                   />
                   <div className="min-w-0 flex-1">
