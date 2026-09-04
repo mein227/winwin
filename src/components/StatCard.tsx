@@ -28,17 +28,17 @@ export function StatCard({
 }: StatCardProps) {
   return (
     <div
-      className={`rounded-2xl border bg-gradient-to-br p-4 shadow-lg shadow-black/20 sm:p-5 ${accents[accent]}`}
+      className={`rounded-2xl border bg-gradient-to-br p-3 shadow-lg shadow-black/20 sm:p-5 ${accents[accent]}`}
     >
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <p className="text-sm text-slate-400">{title}</p>
+      <div className="mb-1 flex items-start justify-between gap-3 sm:mb-3">
+        <p className="text-xs text-slate-400 sm:text-sm">{title}</p>
         {icon && (
-          <div className="rounded-lg bg-slate-950/40 p-2 text-slate-300">{icon}</div>
+          <div className="rounded-lg bg-slate-950/40 p-1.5 text-slate-300 sm:p-2">{icon}</div>
         )}
       </div>
-      <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{value}</p>
+      <p className="text-lg font-bold tracking-tight text-white sm:text-3xl">{value}</p>
       {(subtitle || trend !== undefined) && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[0.6875rem] sm:mt-2 sm:text-sm">
           {trend !== undefined && (
             <span className={`font-semibold ${pnlClass(trend)}`}>
               {trend > 0 ? '▲' : trend < 0 ? '▼' : '—'} {Math.abs(trend).toFixed(2)}%

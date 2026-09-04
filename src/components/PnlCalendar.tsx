@@ -72,7 +72,7 @@ export function PnlCalendar({
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 sm:mb-4 sm:gap-3">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -143,7 +143,7 @@ export function PnlCalendar({
                 return (
                   <div
                     key={cell.date}
-                    className={`h-14 rounded-lg border border-slate-800/60 bg-slate-950/30 px-1 py-1 text-[min(0.75rem,2.5vw)] sm:h-[3.875rem] sm:px-2 ${
+                    className={`h-12 rounded-lg border border-slate-800/60 bg-slate-950/30 px-1 py-0.5 text-[min(0.75rem,2.5vw)] sm:h-[3.875rem] sm:px-2 sm:py-1 ${
                       cell.inMonth ? 'text-slate-600' : 'text-slate-700'
                     } ${selected ? 'ring-1 ring-teal-500/40' : ''}`}
                   >
@@ -158,7 +158,7 @@ export function PnlCalendar({
                   type="button"
                   title={dayTitle(day)}
                   onClick={() => onSelectRange(cell.date, cell.date)}
-                  className={`h-14 overflow-hidden rounded-lg border px-0.5 py-1 text-left transition hover:brightness-125 min-[360px]:px-1 sm:h-[3.875rem] sm:px-2 ${toneClass(
+                  className={`h-12 overflow-hidden rounded-lg border px-0.5 py-0.5 text-left transition hover:brightness-125 min-[360px]:px-1 sm:h-[3.875rem] sm:px-2 sm:py-1 ${toneClass(
                     day.pnl,
                     maxAbs,
                   )} ${cell.inMonth ? '' : 'opacity-45'} ${
@@ -187,7 +187,7 @@ export function PnlCalendar({
               type="button"
               onClick={() => onSelectRange(week.startDate, week.endDate)}
               title={`${week.total.label} 損益 ${formatCurrency(week.total.pnl)}`}
-              className={`h-14 overflow-hidden rounded-lg border border-slate-700/70 bg-slate-950/60 px-0.5 py-1 text-left transition hover:bg-slate-800/60 min-[360px]:px-1 sm:h-[3.875rem] sm:px-2 ${
+              className={`h-12 overflow-hidden rounded-lg border border-slate-700/70 bg-slate-950/60 px-0.5 py-0.5 text-left transition hover:bg-slate-800/60 min-[360px]:px-1 sm:h-[3.875rem] sm:px-2 sm:py-1 ${
                 range.start === week.startDate && range.end === week.endDate
                   ? 'ring-2 ring-teal-400'
                   : ''
@@ -215,7 +215,7 @@ export function PnlCalendar({
         ))}
       </div>
 
-      <p className="mt-3 text-[0.6875rem] text-slate-500 sm:text-xs">
+      <p className="mt-2 text-[0.6875rem] text-slate-500 sm:mt-3 sm:text-xs">
         點日期、週合計或本月損益即可帶入上方的區間；藍點表示當日有成交紀錄。
       </p>
     </div>

@@ -68,8 +68,8 @@ export function PnlRangeControls({
   const presets = useMemo(() => buildPresets(bounds), [bounds])
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+    <div className="space-y-2 sm:space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <input
             type="date"
@@ -80,7 +80,7 @@ export function PnlRangeControls({
             onChange={(e) =>
               e.target.value && onRangeChange({ ...range, start: e.target.value })
             }
-            className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-200 sm:px-3"
+            className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 sm:px-3 sm:py-2 sm:text-sm"
           />
           <span className="shrink-0 text-slate-500">~</span>
           <input
@@ -91,18 +91,18 @@ export function PnlRangeControls({
             onChange={(e) =>
               e.target.value && onRangeChange({ ...range, end: e.target.value })
             }
-            className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-200 sm:px-3"
+            className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 sm:px-3 sm:py-2 sm:text-sm"
           />
         </div>
 
         <div className="min-w-0 sm:text-right">
-          <p className="text-xs text-slate-500">區間總損益</p>
+          <p className="text-[0.6875rem] text-slate-500 sm:text-xs">區間總損益</p>
           <p
-            className={`text-2xl font-bold tracking-tight ${pnlClass(total.pnl)}`}
+            className={`text-lg font-bold tracking-tight sm:text-2xl ${pnlClass(total.pnl)}`}
           >
             {formatCurrency(total.pnl)}
           </p>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-500 sm:justify-end">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.6875rem] text-slate-500 sm:justify-end sm:text-xs">
             <span className={pnlClass(total.pnlPercent)}>
               {formatNumber(total.pnlPercent, 2)}%
             </span>
@@ -121,7 +121,7 @@ export function PnlRangeControls({
               key={preset.label}
               type="button"
               onClick={() => onRangeChange(preset.range)}
-              className={`whitespace-nowrap rounded-xl border px-3 py-1.5 text-[min(0.875rem,3.4vw)] transition ${
+              className={`whitespace-nowrap rounded-xl border px-2 py-1 text-[min(0.75rem,3.4vw)] transition sm:px-3 sm:py-1.5 sm:text-[min(0.875rem,3.4vw)] ${
                 active
                   ? 'border-teal-500/50 bg-teal-500/15 text-teal-200'
                   : 'border-slate-700 bg-slate-950/60 text-slate-300 hover:bg-slate-800'
