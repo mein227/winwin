@@ -187,6 +187,21 @@ export function formatNumber(value: number, digits = 2): string {
   }).format(rounded)
 }
 
+/** 股價、均價：小數位跟著實際報價（4,760、67.4、16.94），不補零 */
+export function formatPrice(value: number): string {
+  return new Intl.NumberFormat('zh-TW', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
+/** 帶正負號的金額（例如 +19,600），用於欄位窄、幣別已在標題說明的表格 */
+export function formatSigned(value: number, digits = 0): string {
+  const rounded = Math.round(value * 10 ** digits)
+  const text = formatNumber(value, digits)
+  return rounded > 0 ? `+${text}` : text
+}
+
 /** 緊湊數字（例如 1.2萬），用於月曆格子等空間有限的地方 */
 export function formatCompact(value: number, withSign = false): string {
   const text = new Intl.NumberFormat('zh-TW', {
