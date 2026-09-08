@@ -4,6 +4,7 @@ import type { Holding } from '../types'
 import {
   formatNumber,
   formatPercent,
+  formatPrice,
   formatSigned,
   pnlClass,
 } from '../utils/calculations'
@@ -99,8 +100,10 @@ const STICKY_SYMBOL_TH =
 const STICKY_SYMBOL_TD =
   'sticky left-0 z-10 min-w-[6rem] bg-slate-900 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.45)] group-hover:bg-slate-800 sm:min-w-[8rem]'
 const CELL = 'whitespace-nowrap px-2.5 py-2 sm:px-4 sm:py-3'
-const PRIMARY = 'text-sm font-semibold text-slate-100 sm:text-base'
-const SECONDARY = 'mt-0.5 text-[0.6875rem] text-slate-500 sm:text-xs'
+/** 文字顏色一律各自指定，否則損益色會被基礎樣式的顏色蓋掉 */
+const PRIMARY = 'text-sm font-semibold sm:text-base'
+const SECONDARY = 'mt-0.5 text-[0.6875rem] sm:text-xs'
+const NEUTRAL = 'text-slate-100'
 
 interface QuoteChange {
   change: number
@@ -448,16 +451,16 @@ export function Holdings({ holdings, onUpdatePrice, onUpdatePrices }: HoldingsPr
                             <button
                               type="button"
                               onClick={() => startEdit(h)}
-                              className={`inline-flex items-center gap-1 ${PRIMARY} hover:text-teal-300`}
+                              className={`inline-flex items-center gap-1 ${PRIMARY} ${NEUTRAL} hover:text-teal-300`}
                               title="手動更新現價"
                             >
-                              {formatNumber(h.currentPrice)}
+                              {formatPrice(h.currentPrice)}
                               <RefreshCw className="h-3 w-3 text-slate-500" />
                             </button>
                             <p
                               className={`${SECONDARY} ${
                                 row.changePercent == null
-                                  ? ''
+                                  ? 'text-slate-500'
                                   : pnlClass(row.changePercent)
                               }`}
                             >
@@ -476,16 +479,22 @@ export function Holdings({ holdings, onUpdatePrice, onUpdatePrices }: HoldingsPr
                           {formatPercent(h.unrealizedPnLPercent)}
                         </p>
                       </td>
-                      <td className={`${CELL} text-right ${PRIMARY}`}>
+                      <td className={`${CELL} text-right ${PRIMARY} ${NEUTRAL}`}>
                         {formatNumber(h.shares, 0)}
                       </td>
                       <td className={`${CELL} text-right`}>
-                        <p className={PRIMARY}>{formatNumber(h.avgCost)}</p>
-                        <p className={SECONDARY}>{formatNumber(h.totalCost, 0)} 元</p>
+                        <p className={`${PRIMARY} ${NEUTRAL}`}>{formatPrice(h.avgCost)}</p>
+                        <p className={`${SECONDARY} text-slate-500`}>
+                          {formatNumber(h.totalCost, 0)} 元
+                        </p>
                       </td>
                       <td className={`${CELL} text-right`}>
-                        <p className={PRIMARY}>{formatNumber(h.marketValue, 0)}</p>
-                        <p className={SECONDARY}>{formatNumber(h.weight, 1)}%</p>
+                        <p className={`${PRIMARY} ${NEUTRAL}`}>
+                          {formatNumber(h.marketValue, 0)}
+                        </p>
+                        <p className={`${SECONDARY} text-slate-500`}>
+                          {formatNumber(h.weight, 1)}%
+                        </p>
                       </td>
                       <td
                         className={`${CELL} text-right ${PRIMARY} ${
