@@ -148,7 +148,6 @@ export function Allocation({
       {view === 'rebalance' && (
         <RebalancePanel
           plan={rebalance}
-          holdings={holdings}
           exposure={exposure}
           assetSettings={assetSettings}
           settings={settings}

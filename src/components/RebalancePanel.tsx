@@ -29,7 +29,6 @@ import type {
   AllocationSettings,
   AssetSetting,
   BlueprintRetirementPreset,
-  Holding,
   RebalancePlan,
   SellReason,
 } from '../types'
@@ -47,7 +46,6 @@ import { FormulaHint } from './FormulaHint'
 
 interface RebalancePanelProps {
   plan: RebalancePlan
-  holdings: Holding[]
   exposure: ExposureResult
   assetSettings: AssetSetting[]
   settings: AllocationSettings
@@ -91,7 +89,6 @@ const retirementOptions: {
 
 export function RebalancePanel({
   plan,
-  holdings,
   exposure,
   assetSettings,
   settings,
@@ -99,7 +96,7 @@ export function RebalancePanel({
   onApplyTargetWeights,
   onUpdateSettings,
 }: RebalancePanelProps) {
-  const market = useBlueprintMarketData(holdings, exposure)
+  const market = useBlueprintMarketData()
   // 參數平常不會天天改，手機先收起來，桌機維持展開
   const [settingsOpen, setSettingsOpen] = useState(
     () => typeof window === 'undefined' || window.innerWidth >= 640,
@@ -111,7 +108,6 @@ export function RebalancePanel({
         indexName: market.indexQuote?.name ?? '加權指數',
         indexClose: market.indexQuote?.price ?? null,
         indexDate: market.indexQuote?.date ?? '',
-        leveragedDailyGain: market.leveragedDailyGain,
       }),
     [exposure, market, settings],
   )
@@ -303,12 +299,6 @@ export function RebalancePanel({
                       加權指數收盤：
                       {market.indexQuote ? formatNumber(market.indexQuote.price, 2) : '—'}
                     </p>
-                    <p className={`mt-1 text-xs ${pnlClass(market.leveragedDailyGain ?? 0)}`}>
-                      今日正二損益：
-                      {market.leveragedDailyGain == null
-                        ? '—'
-                        : formatCurrency(market.leveragedDailyGain)}
-                    </p>
                   </div>
                   <button
                     type="button"
@@ -328,7 +318,7 @@ export function RebalancePanel({
               <p className="text-[0.6875rem] text-slate-500">
                 {market.message ||
                   (market.indexQuote
-                    ? `${market.indexQuote.date} 收盤；正二損益＝持有股數 × 當日價差`
+                    ? `${market.indexQuote.date} 收盤`
                     : '正在取得最新收盤價')}
               </p>
             </div>
@@ -491,7 +481,7 @@ export function RebalancePanel({
         </div>
       </div>
 
-      <div className="grid gap-2.5 sm:gap-4 lg:grid-cols-3">
+      <div className="grid gap-2.5 sm:gap-4 lg:grid-cols-2">
         <div
           className={`rounded-2xl border p-3 sm:p-4 ${
             blueprint.dipBuy.eligible
@@ -557,26 +547,6 @@ export function RebalancePanel({
             <p className="mt-1.5 text-xs text-amber-100 sm:mt-3 sm:text-sm">
               約 {formatCurrency(blueprint.retirement.suggestedMonthly)}／月
               （年 {formatCurrency(blueprint.retirement.maxAnnualWithdrawal)}）
-            </p>
-          )}
-        </div>
-
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-3 sm:p-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-teal-300" />
-            <p className="text-xs font-semibold text-white sm:text-sm">微量動態再平衡</p>
-            <FormulaHint
-              title="微量動態再平衡"
-              formula="今日正二損益 = Σ 持有股數 ×（最新收盤 − 前一日收盤）"
-              note="正數時建議約三分之一轉回現金；收盤價每日自動更新"
-            />
-          </div>
-          <p className="mt-1.5 text-[0.6875rem] text-slate-300 sm:mt-2 sm:text-xs">
-            {blueprint.microRebalance.note}
-          </p>
-          {blueprint.microRebalance.trimAmount > 0 && (
-            <p className="mt-1.5 text-xs text-teal-100 sm:mt-3 sm:text-sm">
-              建議轉回現金 {formatCurrency(blueprint.microRebalance.trimAmount)}
             </p>
           )}
         </div>
@@ -853,8 +823,7 @@ export function RebalancePanel({
           <section>
             <h4 className="font-semibold text-teal-200">四、動態平衡與波動賺錢</h4>
             <p className="mt-1 text-slate-400">
-              正二上漲時可微量再平衡（獲利約三分之一轉現金）；加權指數創高後重設下跌加碼基準。落實「正二
-              + 原型 + 三成現金」後，即使短期不看盤，組合也不易因單一波動而失控。
+              加權指數創高後重設下跌加碼基準。落實「正二 + 原型 + 三成現金」後，即使短期不看盤，組合也不易因單一波動而失控。
             </p>
           </section>
         </div>
