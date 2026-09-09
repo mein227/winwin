@@ -95,6 +95,11 @@ export function cashTypeLabel(type: CashAccountType): string {
 export const assetClassOptions = Object.keys(ASSET_CLASS_LABELS) as AssetClass[]
 export const cashTypeOptions = Object.keys(CASH_TYPE_LABELS) as CashAccountType[]
 
+/** 可作為買賣交割的帳戶（不含負債） */
+export function settleableCashAccounts(accounts: CashAccount[]): CashAccount[] {
+  return accounts.filter((account) => account.type !== 'debt')
+}
+
 /**
  * 由代號與名稱自動判定曝險倍數與資產類別。
  * 台股慣例：代號後綴 L 為槓桿（多為正 2）、R 為反向（多為反 1）、B 為債券、T 為不動產。

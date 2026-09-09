@@ -75,8 +75,12 @@ export function Cash({
       setError('請填寫帳戶名稱')
       return
     }
-    if (!Number.isFinite(amount) || amount < 0) {
-      setError('金額必須為 0 或正數（負債請選擇「負債」類型）')
+    if (!Number.isFinite(amount)) {
+      setError('請填寫有效金額')
+      return
+    }
+    if (form.type === 'debt' && amount < 0) {
+      setError('負債金額請填正數（系統會以負值計入淨值）')
       return
     }
 
@@ -102,7 +106,7 @@ export function Cash({
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 sm:block">
         <h2 className="text-lg font-bold text-white sm:text-2xl">現金資產</h2>
         <p className="text-xs text-slate-400 sm:mt-1 sm:text-sm">
-          記錄手上現金、交割戶餘額與負債，才能算出真正的總淨值、現金比重與曝險倍數
+          記錄手上現金、交割戶餘額與負債；進出紀錄的買賣會連動帳戶餘額，負數以紅色標示
         </p>
       </div>
 
@@ -111,7 +115,11 @@ export function Cash({
           <p className="flex items-center gap-1.5 text-xs text-slate-400 sm:gap-2 sm:text-sm">
             <Banknote className="h-4 w-4" /> 現金資產
           </p>
-          <p className="mt-1 text-lg font-bold text-white sm:mt-2 sm:text-2xl">
+          <p
+            className={`mt-1 text-lg font-bold sm:mt-2 sm:text-2xl ${
+              summary.cashAsset < 0 ? 'text-rose-400' : 'text-white'
+            }`}
+          >
             {formatCurrency(summary.cashAsset)}
           </p>
           <p className="mt-0.5 text-[0.6875rem] text-slate-500 sm:mt-1 sm:text-xs">
@@ -260,7 +268,7 @@ export function Cash({
                 <input
                   type="number"
                   step="any"
-                  min="0"
+                  min={form.type === 'debt' ? '0' : undefined}
                   value={form.amount}
                   onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
                   placeholder="0"
@@ -305,7 +313,7 @@ export function Cash({
 
             {error && <p className="mt-2 text-xs text-rose-400 sm:mt-3 sm:text-sm">{error}</p>}
             <p className="mt-2 text-[0.6875rem] text-slate-500 sm:mt-3 sm:text-xs">
-              融資、股票質借、信貸請選擇「負債」類型並填正數金額，系統會自動以負值計入淨值與曝險
+              融資、股票質借、信貸請選擇「負債」類型並填正數金額，系統會自動以負值計入淨值與曝險。進出紀錄的買進／賣出會連動此處帳戶餘額，餘額為負時會以紅色標示。
             </p>
           </>
         )}
@@ -323,6 +331,7 @@ export function Cash({
           <div className="divide-y divide-slate-800">
             {cashAccounts.map((account) => {
               const isDebt = account.type === 'debt'
+              const isNegativeAsset = !isDebt && account.amount < 0
               return (
                 <div
                   key={account.id}
@@ -330,7 +339,7 @@ export function Cash({
                 >
                   <div
                     className={`shrink-0 rounded-lg p-1.5 sm:rounded-xl sm:p-2 ${
-                      isDebt
+                      isDebt || isNegativeAsset
                         ? 'bg-rose-500/15 text-rose-300'
                         : 'bg-teal-500/15 text-teal-300'
                     }`}
@@ -350,11 +359,12 @@ export function Cash({
                   </div>
                   <p
                     className={`shrink-0 text-sm font-semibold sm:text-lg ${
-                      isDebt ? 'text-rose-300' : 'text-white'
+                      isDebt || isNegativeAsset ? 'text-rose-400' : 'text-white'
                     }`}
                   >
-                    {isDebt ? '-' : ''}
-                    {formatCurrency(Math.abs(account.amount))}
+                    {isDebt
+                      ? `-${formatCurrency(Math.abs(account.amount))}`
+                      : formatCurrency(account.amount)}
                   </p>
                   <div className="flex shrink-0 gap-0.5 sm:gap-1">
                     <button
@@ -367,7 +377,15 @@ export function Cash({
                     </button>
                     <button
                       type="button"
-                      onClick={() => onDelete(account.id)}
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            '確定刪除此帳戶？已連動的進出紀錄會改為未指定帳戶。',
+                          )
+                        ) {
+                          onDelete(account.id)
+                        }
+                      }}
                       className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-rose-300 sm:p-2"
                       title="刪除"
                     >
