@@ -504,8 +504,8 @@ export function RebalancePanel({
             <p className="text-xs font-semibold text-white sm:text-sm">下跌加碼</p>
             <FormulaHint
               title="下跌加碼"
-              formula={`回撤 ${dipThresholdLabel} → 依序加碼 5%／5%／5% 淨值`}
-              note="回撤＝（手動設定的加權指數最高點 − 最新收盤）÷ 最高點；三筆合計 15%"
+              formula={`回撤 ${dipThresholdLabel} → 依序加碼 ${blueprint.dipBuy.tranchePercent}%／${blueprint.dipBuy.tranchePercent}%／${blueprint.dipBuy.tranchePercent}% 目前現金資產`}
+              note={`回撤＝（手動設定的加權指數最高點 − 最新收盤）÷ 最高點；三筆合計目前現金資產 ${blueprint.dipBuy.tranchePercent * blueprint.dipBuy.maxTranches}%`}
             />
           </div>
           <p className="mt-1.5 text-[0.6875rem] text-slate-300 sm:mt-2 sm:text-xs">
@@ -521,7 +521,7 @@ export function RebalancePanel({
             </p>
             <p>
               {dipThresholdLabel} 各加碼一次，每筆約{' '}
-              {formatCurrency(blueprint.dipBuy.trancheAmount)}（淨值 5%）
+              {formatCurrency(blueprint.dipBuy.trancheAmount)}（目前現金資產 {blueprint.dipBuy.tranchePercent}%）
             </p>
             <p>
               已達 {blueprint.dipBuy.triggeredTranches}/3 筆門檻
@@ -828,9 +828,10 @@ export function RebalancePanel({
             <h4 className="font-semibold text-teal-200">一、保留三成現金的防禦機制</h4>
             <p className="mt-1 text-slate-400">
               累積資產時至少保留三成現金（或「兩成原型 ETF + 兩成現金」等效）。市場自高點下跌
-              {dipThresholds[0]}% 時投入第一筆 5%；若再跌至 {dipThresholds[1]}% 投入第二筆 5%，跌至{' '}
-              {dipThresholds[2]}% 投入第三筆 5%，
-              三筆合計為淨值的 15%。
+              {dipThresholds[0]}% 時投入第一筆目前現金資產的 {blueprint.dipBuy.tranchePercent}%；若再跌至 {dipThresholds[1]}% 投入第二筆{' '}
+              {blueprint.dipBuy.tranchePercent}%，跌至 {dipThresholds[2]}% 投入第三筆{' '}
+              {blueprint.dipBuy.tranchePercent}%，
+              三筆合計為目前現金資產的 {blueprint.dipBuy.tranchePercent * blueprint.dipBuy.maxTranches}%。
             </p>
           </section>
           <section>
