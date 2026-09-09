@@ -50,7 +50,6 @@ export interface BlueprintMarketSnapshot {
   indexName: string
   indexClose: number | null
   indexDate: string
-  leveragedDailyGain: number | null
 }
 
 export interface BlueprintAnalysis {
@@ -83,11 +82,6 @@ export interface BlueprintAnalysis {
     maxAnnualWithdrawal: number
     suggestedMonthly: number
     withdrawalRate: number
-    note: string
-  }
-  microRebalance: {
-    todayGain: number | null
-    trimAmount: number
     note: string
   }
 }
@@ -316,8 +310,6 @@ export function analyzeBlueprint(
     10,
   )
   const maxAnnual = (withdrawalRate / 100) * peak
-  const todayGain = market.leveragedDailyGain
-  const trimAmount = todayGain != null && todayGain > 0 ? todayGain / 3 : 0
 
   const actions = buildActions({
     stage,
@@ -338,8 +330,6 @@ export function analyzeBlueprint(
     peak,
     withdrawalRate,
     netWorth,
-    trimAmount,
-    todayGain,
   })
 
   const stageHint =
@@ -402,16 +392,6 @@ export function analyzeBlueprint(
             : '請填寫金融資產歷史最高點，才能計算安全提領上限'
           : '未達 20 倍生活費前，以累積與配置調整為主，不必急著質押提領',
     },
-    microRebalance: {
-      todayGain,
-      trimAmount,
-      note:
-        todayGain == null
-          ? '尚無正二持股或收盤行情，暫時無法計算今日正二損益'
-          : todayGain > 0
-          ? `今日正二約賺 ${formatMoney(todayGain)}，可賣出約三分之一（${formatMoney(trimAmount)}）補回現金`
-          : `今日正二損益為 ${formatMoney(todayGain)}，未產生獲利，不需執行微量停利`,
-    },
   }
 }
 
@@ -434,8 +414,6 @@ function buildActions(input: {
   peak: number
   withdrawalRate: number
   netWorth: number
-  trimAmount: number
-  todayGain: number | null
 }): BlueprintAction[] {
   const actions: BlueprintAction[] = []
   const { targets, current, gaps } = input
@@ -547,15 +525,6 @@ function buildActions(input: {
       severity: 'info',
       title: `尚未達下跌加碼門檻（目前跌 ${formatPct(input.drawdown)}）`,
       detail: `從高點跌幅達 ${input.dipTrigger}% 才動用三成現金分批加碼；現在以持有與觀察為主，並在創高後重設基準。`,
-    })
-  }
-
-  if (input.todayGain != null && input.todayGain > 0 && input.trimAmount > 0) {
-    actions.push({
-      id: 'micro-rebalance',
-      severity: 'info',
-      title: `微量動態再平衡：可賣出約 ${formatMoney(input.trimAmount)}`,
-      detail: '正二因上漲獲利時，把當日獲利約三分之一轉回現金，維持防禦水位，不必等到偏離很大才調整。',
     })
   }
 
