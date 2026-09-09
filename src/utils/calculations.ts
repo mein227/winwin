@@ -1,4 +1,5 @@
 import type {
+  CashAccount,
   Holding,
   PortfolioSummary,
   StockPrice,
@@ -6,12 +7,33 @@ import type {
 } from '../types'
 
 /** 計算單筆交易成本（買：本金+手續費；賣：收入-手續費-稅） */
-export function getTransactionCashFlow(tx: Transaction): number {
+export function getTransactionCashFlow(
+  tx: Pick<Transaction, 'type' | 'price' | 'shares' | 'fee' | 'tax'>,
+): number {
   const amount = tx.price * tx.shares
   if (tx.type === 'buy') {
     return -(amount + tx.fee)
   }
   return amount - tx.fee - tx.tax
+}
+
+/** 將多筆現金增減套用到帳戶餘額（同一個帳戶的 delta 會合併） */
+export function applyCashAccountFlows(
+  accounts: CashAccount[],
+  flows: { accountId?: string; delta: number }[],
+): CashAccount[] {
+  const byId = new Map<string, number>()
+  for (const { accountId, delta } of flows) {
+    if (!accountId || delta === 0) continue
+    byId.set(accountId, (byId.get(accountId) ?? 0) + delta)
+  }
+  if (byId.size === 0) return accounts
+  const now = new Date().toISOString()
+  return accounts.map((account) => {
+    const delta = byId.get(account.id)
+    if (!delta) return account
+    return { ...account, amount: account.amount + delta, updatedAt: now }
+  })
 }
 
 /** 建議手續費（台股常見 0.1425%，可設折扣） */

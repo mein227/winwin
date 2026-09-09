@@ -11,6 +11,8 @@ export interface Transaction {
   tax: number
   date: string
   note?: string
+  /** 連動的現金帳戶：買進扣款、賣出入帳 */
+  cashAccountId?: string
   createdAt: string
 }
 

@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
-import type { Transaction } from '../types'
+import type { CashAccount, Transaction } from '../types'
 import { formatCurrency, formatNumber } from '../utils/calculations'
 import { TransactionForm } from './TransactionForm'
 
 interface TransactionsProps {
   transactions: Transaction[]
+  cashAccounts: CashAccount[]
   onAdd: (tx: Omit<Transaction, 'id' | 'createdAt'>) => void
   onUpdate: (id: string, patch: Partial<Transaction>) => void
   onDelete: (id: string) => void
@@ -14,6 +15,7 @@ interface TransactionsProps {
 
 export function Transactions({
   transactions,
+  cashAccounts,
   onAdd,
   onUpdate,
   onDelete,
@@ -31,30 +33,45 @@ export function Transactions({
     return [...map.entries()].map(([symbol, name]) => ({ symbol, name }))
   }, [transactions])
 
+  const accountsById = useMemo(() => {
+    const map = new Map<string, CashAccount>()
+    for (const account of cashAccounts) {
+      map.set(account.id, account)
+    }
+    return map
+  }, [cashAccounts])
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return [...transactions]
       .filter((tx) => (filter === 'all' ? true : tx.type === filter))
-      .filter((tx) =>
-        !q
-          ? true
-          : tx.symbol.toLowerCase().includes(q) ||
-            tx.name.toLowerCase().includes(q) ||
-            (tx.note ?? '').toLowerCase().includes(q),
-      )
+      .filter((tx) => {
+        if (!q) return true
+        const accountName = tx.cashAccountId
+          ? (accountsById.get(tx.cashAccountId)?.name ?? '')
+          : ''
+        return (
+          tx.symbol.toLowerCase().includes(q) ||
+          tx.name.toLowerCase().includes(q) ||
+          (tx.note ?? '').toLowerCase().includes(q) ||
+          accountName.toLowerCase().includes(q)
+        )
+      })
       .sort(
         (a, b) =>
           new Date(b.date).getTime() - new Date(a.date).getTime() ||
           b.createdAt.localeCompare(a.createdAt),
       )
-  }, [transactions, query, filter])
+  }, [transactions, query, filter, accountsById])
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white">進出紀錄</h2>
-          <p className="mt-1 text-sm text-slate-400">記錄每筆買進／賣出，自動計算成本與獲利</p>
+          <p className="mt-1 text-sm text-slate-400">
+            記錄每筆買進／賣出，並連動現金帳戶餘額
+          </p>
         </div>
         <button
           type="button"
@@ -75,7 +92,7 @@ export function Transactions({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="搜尋代號、名稱或備註"
+            placeholder="搜尋代號、名稱、帳戶或備註"
             className="w-full rounded-xl border border-slate-700 bg-slate-900 py-2.5 pl-10 pr-3 text-white outline-none focus:border-teal-500"
           />
         </div>
@@ -119,6 +136,7 @@ export function Transactions({
                   <th className="px-4 py-3 font-medium text-right">價格</th>
                   <th className="px-4 py-3 font-medium text-right">股數</th>
                   <th className="px-4 py-3 font-medium text-right">金額</th>
+                  <th className="px-4 py-3 font-medium">現金帳戶</th>
                   <th className="px-4 py-3 font-medium text-right">費用</th>
                   <th className="px-4 py-3 font-medium">備註</th>
                   <th className="px-4 py-3 font-medium text-right">操作</th>
@@ -128,6 +146,9 @@ export function Transactions({
                 {filtered.map((tx) => {
                   const amount = tx.price * tx.shares
                   const fees = tx.fee + tx.tax
+                  const account = tx.cashAccountId
+                    ? accountsById.get(tx.cashAccountId)
+                    : undefined
                   return (
                     <tr
                       key={tx.id}
@@ -159,6 +180,22 @@ export function Transactions({
                       </td>
                       <td className="px-4 py-3 text-right text-slate-200">
                         {formatCurrency(amount)}
+                      </td>
+                      <td className="px-4 py-3">
+                        {account ? (
+                          <div>
+                            <div className="text-slate-200">{account.name}</div>
+                            <div
+                              className={`text-xs ${
+                                account.amount < 0 ? 'text-rose-400' : 'text-slate-500'
+                              }`}
+                            >
+                              餘額 {formatCurrency(account.amount)}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-500">未指定</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right text-slate-400">
                         {formatCurrency(fees)}
@@ -207,6 +244,7 @@ export function Transactions({
           setEditing(null)
         }}
         knownSymbols={knownSymbols}
+        cashAccounts={cashAccounts}
         initial={editing}
         onSubmit={(tx) => {
           if (editing) {

@@ -36,6 +36,7 @@ export default function App() {
       {tab === 'transactions' && (
         <Transactions
           transactions={portfolio.transactions}
+          cashAccounts={portfolio.cashAccounts}
           onAdd={portfolio.addTransaction}
           onUpdate={portfolio.updateTransaction}
           onDelete={portfolio.deleteTransaction}

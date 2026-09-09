@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { LoaderCircle, Search, X } from 'lucide-react'
-import type { Transaction, TransactionType } from '../types'
-import { suggestFee, suggestTax, formatNumber, pnlClass } from '../utils/calculations'
+import type { CashAccount, Transaction, TransactionType } from '../types'
+import { suggestFee, suggestTax, formatNumber, pnlClass, formatCurrency, getTransactionCashFlow } from '../utils/calculations'
+import { cashTypeLabel, settleableCashAccounts } from '../utils/exposure'
 import {
   fetchStockQuote,
   getStockDirectory,
@@ -17,6 +18,7 @@ interface TransactionFormProps {
   onSubmit: (tx: Omit<Transaction, 'id' | 'createdAt'>) => void
   initial?: Transaction | null
   knownSymbols?: { symbol: string; name: string }[]
+  cashAccounts?: CashAccount[]
 }
 
 const emptyForm = {
@@ -29,6 +31,7 @@ const emptyForm = {
   tax: '',
   date: new Date().toISOString().slice(0, 10),
   note: '',
+  cashAccountId: '',
   autoFee: true,
 }
 
@@ -38,6 +41,7 @@ export function TransactionForm({
   onSubmit,
   initial,
   knownSymbols = [],
+  cashAccounts = [],
 }: TransactionFormProps) {
   const [form, setForm] = useState(emptyForm)
   const [error, setError] = useState('')
@@ -47,8 +51,15 @@ export function TransactionForm({
   const [directory, setDirectory] = useState<Record<string, StockMeta>>({})
   const [suggestions, setSuggestions] = useState<StockMeta[]>([])
 
+  const settlementAccounts = useMemo(
+    () => settleableCashAccounts(cashAccounts),
+    [cashAccounts],
+  )
+
   useEffect(() => {
     if (!open) return
+    const defaultAccountId =
+      settlementAccounts.length === 1 ? settlementAccounts[0].id : ''
     if (initial) {
       setForm({
         symbol: initial.symbol,
@@ -60,10 +71,15 @@ export function TransactionForm({
         tax: String(initial.tax),
         date: initial.date.slice(0, 10),
         note: initial.note ?? '',
+        cashAccountId:
+          initial.cashAccountId &&
+          settlementAccounts.some((account) => account.id === initial.cashAccountId)
+            ? initial.cashAccountId
+            : defaultAccountId,
         autoFee: false,
       })
     } else {
-      setForm(emptyForm)
+      setForm({ ...emptyForm, cashAccountId: defaultAccountId })
     }
     setError('')
     setLookupMsg('')
@@ -75,7 +91,7 @@ export function TransactionForm({
       .catch(() => {
         /* 離線或 API 失敗時仍可用手動輸入 */
       })
-  }, [open, initial])
+  }, [open, initial, settlementAccounts])
 
   const price = Number(form.price) || 0
   const shares = Number(form.shares) || 0
@@ -182,6 +198,27 @@ export function TransactionForm({
 
   if (!open) return null
 
+  const selectedAccount = settlementAccounts.find(
+    (account) => account.id === form.cashAccountId,
+  )
+  const draftFlow =
+    price > 0 && shares > 0
+      ? getTransactionCashFlow({
+          type: form.type,
+          price,
+          shares,
+          fee: Number(form.fee) || 0,
+          tax: form.type === 'buy' ? 0 : Number(form.tax) || 0,
+        })
+      : 0
+  const previewBalance = selectedAccount
+    ? selectedAccount.amount -
+      (initial?.cashAccountId === selectedAccount.id
+        ? getTransactionCashFlow(initial)
+        : 0) +
+      draftFlow
+    : null
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const symbol = form.symbol.trim().toUpperCase()
@@ -203,6 +240,10 @@ export function TransactionForm({
       setError('請選擇交易日期')
       return
     }
+    if (!form.cashAccountId) {
+      setError('請選擇連動的現金帳戶')
+      return
+    }
 
     onSubmit({
       symbol,
@@ -214,6 +255,7 @@ export function TransactionForm({
       tax: form.type === 'buy' ? 0 : tax,
       date: form.date,
       note: form.note.trim() || undefined,
+      cashAccountId: form.cashAccountId,
     })
     onClose()
   }
@@ -434,6 +476,51 @@ export function TransactionForm({
               onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
               className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-teal-500"
             />
+          </label>
+
+          <label className="block space-y-1.5">
+            <span className="text-sm text-slate-400">連動現金帳戶</span>
+            {settlementAccounts.length === 0 ? (
+              <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-200">
+                請先到「現金資產」新增銀行或交割戶，才能連動買賣金額
+              </p>
+            ) : (
+              <select
+                value={form.cashAccountId}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, cashAccountId: e.target.value }))
+                }
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-teal-500"
+              >
+                <option value="">請選擇帳戶</option>
+                {settlementAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}（{cashTypeLabel(account.type)} ·{' '}
+                    {formatCurrency(account.amount)}）
+                  </option>
+                ))}
+              </select>
+            )}
+            {selectedAccount && previewBalance !== null && (
+              <p className="text-xs text-slate-500">
+                目前餘額{' '}
+                <span className={pnlClass(selectedAccount.amount)}>
+                  {formatCurrency(selectedAccount.amount)}
+                </span>
+                {price > 0 && shares > 0 && (
+                  <>
+                    {' '}
+                    · 交易後{' '}
+                    <span className={pnlClass(previewBalance)}>
+                      {formatCurrency(previewBalance)}
+                    </span>
+                    {previewBalance < 0 && (
+                      <span className="text-rose-400">（將為負數）</span>
+                    )}
+                  </>
+                )}
+              </p>
+            )}
           </label>
 
           <label className="block space-y-1.5">

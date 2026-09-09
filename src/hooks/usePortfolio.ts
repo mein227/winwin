@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   AllocationSettings,
   AssetClass,
@@ -7,7 +7,7 @@ import type {
   StockPrice,
   Transaction,
 } from '../types'
-import { calculateHoldings, calculateSummary } from '../utils/calculations'
+import { calculateHoldings, calculateSummary, applyCashAccountFlows, getTransactionCashFlow } from '../utils/calculations'
 import {
   buildRebalancePlan,
   calculateExposure,
@@ -39,6 +39,8 @@ export function usePortfolio() {
   const [cashAccounts, setCashAccounts] = useState<CashAccount[]>(() => loadCashAccounts())
   const [assetSettings, setAssetSettings] = useState<AssetSetting[]>(() => loadAssetSettings())
   const [settings, setSettings] = useState<AllocationSettings>(() => loadAllocationSettings())
+  const transactionsRef = useRef(transactions)
+  transactionsRef.current = transactions
 
   useEffect(() => {
     saveTransactions(transactions)
@@ -91,6 +93,11 @@ export function usePortfolio() {
       createdAt: new Date().toISOString(),
     }
     setTransactions((prev) => [next, ...prev])
+    setCashAccounts((prev) =>
+      applyCashAccountFlows(prev, [
+        { accountId: next.cashAccountId, delta: getTransactionCashFlow(next) },
+      ]),
+    )
 
     // 買進時若尚無市價，預設為成交價
     setPrices((prev) => {
@@ -108,22 +115,33 @@ export function usePortfolio() {
   }, [])
 
   const updateTransaction = useCallback((id: string, patch: Partial<Transaction>) => {
-    setTransactions((prev) =>
-      prev.map((tx) =>
-        tx.id === id
-          ? {
-              ...tx,
-              ...patch,
-              symbol: (patch.symbol ?? tx.symbol).trim().toUpperCase(),
-              name: (patch.name ?? tx.name).trim(),
-            }
-          : tx,
-      ),
+    const old = transactionsRef.current.find((tx) => tx.id === id)
+    if (!old) return
+    const next: Transaction = {
+      ...old,
+      ...patch,
+      symbol: (patch.symbol ?? old.symbol).trim().toUpperCase(),
+      name: (patch.name ?? old.name).trim(),
+    }
+    setTransactions((prev) => prev.map((tx) => (tx.id === id ? next : tx)))
+    setCashAccounts((accounts) =>
+      applyCashAccountFlows(accounts, [
+        { accountId: old.cashAccountId, delta: -getTransactionCashFlow(old) },
+        { accountId: next.cashAccountId, delta: getTransactionCashFlow(next) },
+      ]),
     )
   }, [])
 
   const deleteTransaction = useCallback((id: string) => {
+    const old = transactionsRef.current.find((tx) => tx.id === id)
     setTransactions((prev) => prev.filter((tx) => tx.id !== id))
+    if (old?.cashAccountId) {
+      setCashAccounts((accounts) =>
+        applyCashAccountFlows(accounts, [
+          { accountId: old.cashAccountId, delta: -getTransactionCashFlow(old) },
+        ]),
+      )
+    }
   }, [])
 
   const updatePrice = useCallback((symbol: string, currentPrice: number) => {
@@ -203,6 +221,11 @@ export function usePortfolio() {
 
   const deleteCashAccount = useCallback((id: string) => {
     setCashAccounts((prev) => prev.filter((account) => account.id !== id))
+    setTransactions((prev) =>
+      prev.map((tx) =>
+        tx.cashAccountId === id ? { ...tx, cashAccountId: undefined } : tx,
+      ),
+    )
   }, [])
 
   const upsertAssetSetting = useCallback(
